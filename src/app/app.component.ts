@@ -38,6 +38,10 @@ export class AppComponent implements OnInit {
 
     for (let i = 10; i < this.data.length; i++) {
 
+      if (this.inLong && this.inShort) {
+        console.log('ERRROR')
+      }
+
       if (this.inLong) {
         if (this.isUp(this.data, i, 0)) {
           this.allTrades.push(this.utils.addFees(0.91));
@@ -140,7 +144,8 @@ export class AppComponent implements OnInit {
 
   stopConditions(i: number): boolean {
     return (
-      this.looseInc == 5 ||
+      this.looseInc == 3 ||
+      this.looseInc2 == 3 ||
       Math.abs(this.high(this.data, i, 0) - this.low(this.data, i, 0)) > 80
     ) ? true : false;
   }
