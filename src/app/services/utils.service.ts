@@ -80,7 +80,8 @@ export class UtilsService {
           low: source[j].low,
           high: source[j].high,
           bull: $close > $open,
-          bear: $close < $open
+          bear: $close < $open,
+          time: source[j].time
         });
       } else {
         const $close = (source[j].open + source[j].high + source[j].low + source[j].close) / 4;
@@ -91,7 +92,8 @@ export class UtilsService {
           low: this.round(Math.min(source[j].low, Math.max($open, $close)), 5),
           high: this.round(Math.max(source[j].high, Math.max($open, $close)), 5),
           bull: $close > $open,
-          bear: $close < $open
+          bear: $close < $open,
+          time: source[j].time
         });
       }
     }

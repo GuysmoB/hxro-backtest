@@ -3,6 +3,7 @@ import { GraphService } from './services/graph.service';
 import { Component, OnInit } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import * as FusionCharts from 'fusioncharts';
+import { error } from '@angular/compiler/src/util';
 
 
 @Component({
@@ -12,6 +13,8 @@ import * as FusionCharts from 'fusioncharts';
 })
 export class AppComponent implements OnInit {
 
+  htfData = [];
+  htfHaData = [];
   data = [];
   haData = [];
   inLong = false;
@@ -30,16 +33,18 @@ export class AppComponent implements OnInit {
   constructor(private http: HttpClient, private graphService: GraphService, private utils: UtilsService) { }
 
   async ngOnInit() {
-    //this.data = await this.getDataFromApi();
-    this.data = await this.getDataFromFile();
+    this.htfData = await this.getDataFromApi("https://btc.history.hxro.io/15m");
+    this.data = await this.getDataFromApi("https://btc.history.hxro.io/1m");
+    //this.data = await this.getDataFromFile();
     this.haData = this.utils.setHeikenAshiData(this.data);
+    this.htfHaData = this.utils.setHeikenAshiData(this.htfData);
     console.log('data', JSON.stringify(this.data))
     const rsiValues = this.rsi(this.data, 14);
 
     for (let i = 10; i < this.data.length; i++) {
 
       if (this.inLong && this.inShort) {
-        console.log('ERRROR')
+        throw console.error("STOOOP");
       }
 
       if (this.inLong) {
@@ -128,9 +133,9 @@ export class AppComponent implements OnInit {
     });
   }
 
-  getDataFromApi(): Promise<any> {
+  getDataFromApi(url: string): Promise<any> {
     return new Promise<void>((resolve, reject) => {
-      this.http.get("https://btc.history.hxro.io/1m").subscribe(
+      this.http.get(url).subscribe(
         (res: any) => {
           resolve(res.data);
         },
@@ -144,8 +149,8 @@ export class AppComponent implements OnInit {
 
   stopConditions(i: number): boolean {
     return (
-      this.looseInc == 3 ||
-      this.looseInc2 == 3 ||
+      this.looseInc == 5 ||
+      this.looseInc2 == 5 ||
       Math.abs(this.high(this.data, i, 0) - this.low(this.data, i, 0)) > 80
     ) ? true : false;
   }
@@ -166,6 +171,21 @@ export class AppComponent implements OnInit {
     this.dataSourceRisk.data = this.utils.formatDataForGraphLine(dataRisk);
   }
 
+  getHtfHeikenAshi(j: number) {
+    const stfTime = this.data[j].time;
+
+    for (let i = 2; i < this.htfData.length; i++) {
+      const htfTime = this.htfData[i].time;
+      const htfTime1 = this.htfData[i - 1].time;
+
+      if (stfTime > htfTime1 && stfTime < htfTime) {
+        /* console.log('stfTime', this.utils.getDate(stfTime));
+        console.log('htfTime1', this.utils.getDate(htfTime1));
+        console.log('htfTime', this.utils.getDate(htfTime)); */
+        return this.htfHaData[i - 2];
+      }
+    }
+  }
 
   bullStrategy(haData: any, data: any, i: number, lookback: number, rsiValues: any): any {
     let cond = true;
@@ -176,9 +196,21 @@ export class AppComponent implements OnInit {
         break;
       }
     }
+    /* if (this.utils.getDate(data[i].time) == "17/07/2021 18:53:00") {
+      console.log('STOP');
+    } */
 
-    if (cond && haData[i].close > haData[i].open && rsiValues[i] < 40) {
+    const htfHa = this.getHtfHeikenAshi(i);
+
+
+    if (cond &&
+      haData[i].close > haData[i].open &&
+      rsiValues[i] < 40 /* &&
+      htfHa?.bull */) {
+      /*     console.log('htfHa', htfHa);
+          console.log('htfHa tiime', this.utils.getDate(htfHa.time)); */
       console.log('Entry bull setup', this.utils.getDate(data[i].time));
+      //console.log('Htf HA', this.getHtfHeikenAshi(i));
       return true;
     } else {
       return false;
@@ -195,8 +227,12 @@ export class AppComponent implements OnInit {
         break;
       }
     }
+    const htfHa = this.getHtfHeikenAshi(i);
 
-    if (cond && haData[i].close < haData[i].open && rsiValues[i] > 60) {
+    if (cond &&
+      haData[i].close < haData[i].open &&
+      rsiValues[i] > 60 /* &&
+      htfHa?.bear */) {
       console.log('Entry bear setup', this.utils.getDate(data[i].time));
       return true;
     } else {
