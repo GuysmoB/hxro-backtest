@@ -22,8 +22,8 @@ export class AppComponent implements OnInit {
   allTrades = [];
   winTrades = [];
   loseTrades = [];
-  looseInc = 0;
-  looseInc2 = 0;
+  looseIncLong = 0;
+  looseIncShort = 0;
   dataSourceRisk: any;
   dataSourceCandle: any;
   displayChart = true;
@@ -33,9 +33,9 @@ export class AppComponent implements OnInit {
   constructor(private http: HttpClient, private graphService: GraphService, private utils: UtilsService) { }
 
   async ngOnInit() {
-    this.htfData = await this.getDataFromApi("https://btc.history.hxro.io/15m");
-    this.data = await this.getDataFromApi("https://btc.history.hxro.io/1m");
-    //this.data = await this.getDataFromFile();
+    this.htfData = await this.getDataFromApi("https://btc.history.hxro.io/1h");
+    //this.data = await this.getDataFromApi("https://btc.history.hxro.io/1m");
+    this.data = await this.getDataFromFile();
     this.haData = this.utils.setHeikenAshiData(this.data);
     this.htfHaData = this.utils.setHeikenAshiData(this.htfData);
     console.log('data', JSON.stringify(this.data))
@@ -43,55 +43,50 @@ export class AppComponent implements OnInit {
 
     for (let i = 10; i < this.data.length; i++) {
 
-      if (this.inLong && this.inShort) {
-        throw console.error("STOOOP");
-      }
-
       if (this.inLong) {
         if (this.isUp(this.data, i, 0)) {
           this.allTrades.push(this.utils.addFees(0.91));
           this.winTrades.push(this.utils.addFees(0.91));
           console.log('Resultat ++', this.round(this.utils.arraySum(this.allTrades), 2), this.utils.getDate(this.data[i].time));
-          this.looseInc = 0;
+          this.looseIncLong = 0;
         } else {
           this.allTrades.push(-1);
           this.loseTrades.push(-1);
           console.log('Resultat --', this.round(this.utils.arraySum(this.allTrades), 2), this.utils.getDate(this.data[i].time));
-          this.looseInc++;
+          this.looseIncLong++;
         }
 
         if (this.stopConditions(i)) {
           this.inLong = false;
-          this.looseInc = 0;
+          this.looseIncLong = 0;
           console.log('Exit bull loose streak', this.utils.getDate(this.data[i].time));
-        } else if (this.haData[i].close < this.haData[i].open) {
+        } else if (this.haData[i].bear) {
           this.inLong = false;
-          this.looseInc = 0;
+          this.looseIncLong = 0;
           console.log('Exit bull setup', this.utils.getDate(this.data[i].time));
         }
       }
 
-
-      if (this.inShort) {
+      else if (this.inShort) {
         if (!this.isUp(this.data, i, 0)) {
           this.allTrades.push(this.utils.addFees(0.91));
           this.winTrades.push(this.utils.addFees(0.91));
           console.log('Resultat ++', this.round(this.utils.arraySum(this.allTrades), 2), this.utils.getDate(this.data[i].time));
-          this.looseInc2 = 0;
+          this.looseIncShort = 0;
         } else {
           this.allTrades.push(-1);
           this.loseTrades.push(-1);
           console.log('Resultat --', this.round(this.utils.arraySum(this.allTrades), 2), this.utils.getDate(this.data[i].time));
-          this.looseInc2++;
+          this.looseIncShort++;
         }
 
         if (this.stopConditions(i)) {
           this.inShort = false;
-          this.looseInc2 = 0;
+          this.looseIncShort = 0;
           console.log('Exit short loose streak', this.utils.getDate(this.data[i].time));
-        } else if (this.haData[i].close > this.haData[i].open) {
+        } else if (this.haData[i].bull) {
           this.inShort = false;
-          this.looseInc2 = 0;
+          this.looseIncShort = 0;
           console.log('Exit short setup', this.utils.getDate(this.data[i].time));
         }
       }
@@ -147,13 +142,7 @@ export class AppComponent implements OnInit {
   }
 
 
-  stopConditions(i: number): boolean {
-    return (
-      this.looseInc == 5 ||
-      this.looseInc2 == 5 ||
-      Math.abs(this.high(this.data, i, 0) - this.low(this.data, i, 0)) > 80
-    ) ? true : false;
-  }
+
 
   /**
   * Initiation des propriétés du graphique.
@@ -179,12 +168,17 @@ export class AppComponent implements OnInit {
       const htfTime1 = this.htfData[i - 1].time;
 
       if (stfTime > htfTime1 && stfTime < htfTime) {
-        /* console.log('stfTime', this.utils.getDate(stfTime));
-        console.log('htfTime1', this.utils.getDate(htfTime1));
-        console.log('htfTime', this.utils.getDate(htfTime)); */
         return this.htfHaData[i - 2];
       }
     }
+  }
+
+  stopConditions(i: number): boolean {
+    return (
+      this.looseIncLong == 5 ||
+      this.looseIncShort == 5 ||
+      Math.abs(this.high(this.data, i, 0) - this.low(this.data, i, 0)) > 50
+    ) ? true : false;
   }
 
   bullStrategy(haData: any, data: any, i: number, lookback: number, rsiValues: any): any {
@@ -200,17 +194,11 @@ export class AppComponent implements OnInit {
       console.log('STOP');
     } */
 
-    const htfHa = this.getHtfHeikenAshi(i);
-
-
-    if (cond &&
-      haData[i].close > haData[i].open &&
-      rsiValues[i] < 40 /* &&
-      htfHa?.bull */) {
-      /*     console.log('htfHa', htfHa);
-          console.log('htfHa tiime', this.utils.getDate(htfHa.time)); */
+    if (cond
+      && haData[i].bull
+      && rsiValues[i] < 40
+    ) {
       console.log('Entry bull setup', this.utils.getDate(data[i].time));
-      //console.log('Htf HA', this.getHtfHeikenAshi(i));
       return true;
     } else {
       return false;
@@ -227,12 +215,11 @@ export class AppComponent implements OnInit {
         break;
       }
     }
-    const htfHa = this.getHtfHeikenAshi(i);
 
-    if (cond &&
-      haData[i].close < haData[i].open &&
-      rsiValues[i] > 60 /* &&
-      htfHa?.bear */) {
+    if (cond
+      && haData[i].bear
+      && rsiValues[i] > 60
+    ) {
       console.log('Entry bear setup', this.utils.getDate(data[i].time));
       return true;
     } else {
