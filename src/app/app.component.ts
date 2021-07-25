@@ -3,7 +3,7 @@ import { GraphService } from './services/graph.service';
 import { Component, OnInit } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import * as FusionCharts from 'fusioncharts';
-import { error } from '@angular/compiler/src/util';
+import { indicatorExponentialMovingAverage } from '@d3fc/d3fc-technical-indicator';
 
 
 @Component({
@@ -16,6 +16,8 @@ export class AppComponent implements OnInit {
   htfData = [];
   htfHaData = [];
   data = [];
+  stfData = [];
+  stfHaData = [];
   haData = [];
   inLong = false;
   inShort = false;
@@ -27,21 +29,34 @@ export class AppComponent implements OnInit {
   dataSourceRisk: any;
   dataSourceCandle: any;
   displayChart = true;
-  lh = 0;
-  ll = 0;
+  emaFastData: any;
+  emaSlowData: any;
 
   constructor(private http: HttpClient, private graphService: GraphService, private utils: UtilsService) { }
 
   async ngOnInit() {
-    this.htfData = await this.getDataFromApi("https://btc.history.hxro.io/1h");
-    //this.data = await this.getDataFromApi("https://btc.history.hxro.io/1m");
-    this.data = await this.getDataFromFile();
+    this.data = await this.getDataFromApi("https://btc.history.hxro.io/5m");
+    //this.stfData = await this.getDataFromApi("https://btc.history.hxro.io/1m");
+    this.stfData = await this.getDataFromFile();
     this.haData = this.utils.setHeikenAshiData(this.data);
-    this.htfHaData = this.utils.setHeikenAshiData(this.htfData);
+    this.stfHaData = this.utils.setHeikenAshiData(this.stfData);
     console.log('data', JSON.stringify(this.data))
     const rsiValues = this.rsi(this.data, 14);
+    const stfRsiValues = this.rsi(this.stfData, 14);
+    const emaSlow = indicatorExponentialMovingAverage().period(20).value(d => d.close);
+    this.emaSlowData = emaSlow(this.stfData);
+
+    const emaFast = indicatorExponentialMovingAverage().period(10).value(d => d.close);
+    this.emaFastData = emaFast(this.stfData);
 
     for (let i = 10; i < this.data.length; i++) {
+
+      const lookback = 6;
+      if (this.bullStrategy(this.haData, this.data, i, lookback, stfRsiValues)) {
+        this.inLong = true;
+      } else if (this.bearStrategy(this.haData, this.data, i, lookback, stfRsiValues)) {
+        this.inShort = true;
+      }
 
       if (this.inLong) {
         if (this.isUp(this.data, i, 0)) {
@@ -56,15 +71,18 @@ export class AppComponent implements OnInit {
           this.looseIncLong++;
         }
 
-        if (this.stopConditions(i)) {
-          this.inLong = false;
-          this.looseIncLong = 0;
-          console.log('Exit bull loose streak', this.utils.getDate(this.data[i].time));
-        } else if (this.haData[i].bear) {
-          this.inLong = false;
-          this.looseIncLong = 0;
-          console.log('Exit bull setup', this.utils.getDate(this.data[i].time));
-        }
+        this.inLong = false; // ####################
+        console.log('Exit bull setup', this.utils.getDate(this.data[i].time));
+
+        /*  if (this.stopConditions(i)) {
+           this.inLong = false;
+           this.looseIncLong = 0;
+           console.log('Exit bull loose streak', this.utils.getDate(this.data[i].time));
+         } else if (this.haData[i].bear) {
+           this.inLong = false;
+           this.looseIncLong = 0;
+           console.log('Exit bull setup', this.utils.getDate(this.data[i].time));
+         } */
       }
 
       else if (this.inShort) {
@@ -79,8 +97,10 @@ export class AppComponent implements OnInit {
           console.log('Resultat --', this.round(this.utils.arraySum(this.allTrades), 2), this.utils.getDate(this.data[i].time));
           this.looseIncShort++;
         }
+        this.inShort = false; // ###############
+        console.log('Exit short setup', this.utils.getDate(this.data[i].time));
 
-        if (this.stopConditions(i)) {
+        /* if (this.stopConditions(i)) {
           this.inShort = false;
           this.looseIncShort = 0;
           console.log('Exit short loose streak', this.utils.getDate(this.data[i].time));
@@ -88,15 +108,10 @@ export class AppComponent implements OnInit {
           this.inShort = false;
           this.looseIncShort = 0;
           console.log('Exit short setup', this.utils.getDate(this.data[i].time));
-        }
+        } */
       }
 
-      const lookback = 6;
-      if (this.bullStrategy(this.haData, this.data, i, lookback, rsiValues)) {
-        this.inLong = true;
-      } else if (this.bearStrategy(this.haData, this.data, i, lookback, rsiValues)) {
-        this.inShort = true;
-      }
+
     }
 
     console.log('-------------');
@@ -148,7 +163,7 @@ export class AppComponent implements OnInit {
   * Initiation des propriétés du graphique.
   */
   initGraphProperties(data: any, dataRisk: any): void {
-    const finalData = data.map((res) => {
+    const finalData = this.data.map((res) => {
       return [this.utils.getDateFormat(res.time), res.open, res.high, res.low, res.close];
     });
 
@@ -173,6 +188,20 @@ export class AppComponent implements OnInit {
     }
   }
 
+
+  getStfCandle(j: number) {
+    const htfTime = this.data[j].time;
+
+    for (let i = 2; i < this.stfData.length; i++) {
+      const stfTime = this.stfData[i].time;
+
+      if (stfTime > htfTime) {
+        //console.log('time', this.utils.getDate(stfTime));
+        return i - 2;
+      }
+    }
+  }
+
   stopConditions(i: number): boolean {
     return (
       this.looseIncLong == 5 ||
@@ -190,14 +219,24 @@ export class AppComponent implements OnInit {
         break;
       }
     }
+
+    const stfIndex = this.getStfCandle(i);
+
     /* if (this.utils.getDate(data[i].time) == "17/07/2021 18:53:00") {
       console.log('STOP');
     } */
 
-    if (cond
+    const oldEma = Math.abs(this.emaFastData[i - 10] - this.emaSlowData[i - 10]);
+    const newEma = Math.abs(this.emaFastData[i] - this.emaSlowData[i]);
+    const div = newEma < oldEma;
+
+    if (data[i].time > this.stfData[0].time
+      && rsiValues[stfIndex] < 40
+      /* cond
       && haData[i].bull
-      && rsiValues[i] < 40
+      && rsiValues[i] < 40 */
     ) {
+      //console.log('rsiValues[stfIndex]', rsiValues[stfIndex]);
       console.log('Entry bull setup', this.utils.getDate(data[i].time));
       return true;
     } else {
@@ -216,10 +255,18 @@ export class AppComponent implements OnInit {
       }
     }
 
-    if (cond
+    const stfIndex = this.getStfCandle(i);
+    const oldEma = Math.abs(this.emaFastData[i - 10] - this.emaSlowData[i - 10]);
+    const newEma = Math.abs(this.emaFastData[i] - this.emaSlowData[i]);
+    const div = newEma < oldEma;
+
+    if (data[i].time > this.stfData[0].time
+      && rsiValues[stfIndex] > 60
+      /* cond
       && haData[i].bear
-      && rsiValues[i] > 60
+      && rsiValues[i] > 60 */
     ) {
+      //console.log('rsiValues[stfIndex]', rsiValues[stfIndex]);
       console.log('Entry bear setup', this.utils.getDate(data[i].time));
       return true;
     } else {
