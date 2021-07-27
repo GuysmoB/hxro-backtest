@@ -33,7 +33,7 @@ export class AppComponent implements OnInit {
   constructor(private http: HttpClient, private graphService: GraphService, private utils: UtilsService) { }
 
   async ngOnInit() {
-    this.htfData = await this.getDataFromApi("https://btc.history.hxro.io/1h");
+    //this.htfData = await this.getDataFromApi("https://btc.history.hxro.io/1h");
     //this.data = await this.getDataFromApi("https://btc.history.hxro.io/1m");
     this.data = await this.getDataFromFile();
     this.haData = this.utils.setHeikenAshiData(this.data);
