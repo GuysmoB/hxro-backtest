@@ -41,7 +41,6 @@ export class AppComponent implements OnInit {
     this.haData = this.utils.setHeikenAshiData(this.data);
     this.stfHaData = this.utils.setHeikenAshiData(this.stfData);
     console.log('data', JSON.stringify(this.data))
-    const rsiValues = this.rsi(this.data, 14);
     const stfRsiValues = this.rsi(this.stfData, 14);
     const emaSlow = indicatorExponentialMovingAverage().period(20).value(d => d.close);
     this.emaSlowData = emaSlow(this.stfData);
@@ -213,7 +212,7 @@ export class AppComponent implements OnInit {
   bullStrategy(haData: any, data: any, i: number, lookback: number, rsiValues: any): any {
     let cond = true;
     for (let j = (i - 1); j >= (i - lookback); j--) {
-      const ha = haData[j];
+      const ha = this.stfHaData[j];
       if (ha.close > ha.open) { // if bull
         cond = false;
         break;
@@ -222,19 +221,11 @@ export class AppComponent implements OnInit {
 
     const stfIndex = this.getStfCandle(i);
 
-    /* if (this.utils.getDate(data[i].time) == "17/07/2021 18:53:00") {
-      console.log('STOP');
-    } */
-
-    const oldEma = Math.abs(this.emaFastData[i - 10] - this.emaSlowData[i - 10]);
-    const newEma = Math.abs(this.emaFastData[i] - this.emaSlowData[i]);
-    const div = newEma < oldEma;
-
-    if (data[i].time > this.stfData[0].time
+    if (data[i].time > this.stfData[10].time
       && rsiValues[stfIndex] < 40
-      /* cond
-      && haData[i].bull
-      && rsiValues[i] < 40 */
+      && this.stfHaData[stfIndex - 4].bear && this.stfHaData[stfIndex - 3].bear && this.stfHaData[stfIndex - 2].bear && this.stfHaData[stfIndex - 1].bear
+      && this.stfHaData[stfIndex].bull
+      //&& rsiValues[i] < 40
     ) {
       //console.log('rsiValues[stfIndex]', rsiValues[stfIndex]);
       console.log('Entry bull setup', this.utils.getDate(data[i].time));
@@ -248,7 +239,7 @@ export class AppComponent implements OnInit {
   bearStrategy(haData: any, data: any, i: number, lookback: number, rsiValues: any): any {
     let cond = true;
     for (let j = (i - 1); j >= (i - lookback); j--) {
-      const ha = haData[j];
+      const ha = this.stfHaData[j];
       if (ha.close < ha.open) { // if bear
         cond = false;
         break;
@@ -256,15 +247,12 @@ export class AppComponent implements OnInit {
     }
 
     const stfIndex = this.getStfCandle(i);
-    const oldEma = Math.abs(this.emaFastData[i - 10] - this.emaSlowData[i - 10]);
-    const newEma = Math.abs(this.emaFastData[i] - this.emaSlowData[i]);
-    const div = newEma < oldEma;
 
-    if (data[i].time > this.stfData[0].time
+    if (data[i].time > this.stfData[10].time
       && rsiValues[stfIndex] > 60
-      /* cond
-      && haData[i].bear
-      && rsiValues[i] > 60 */
+      && this.stfHaData[stfIndex - 4].bull && this.stfHaData[stfIndex - 3].bull && this.stfHaData[stfIndex - 2].bull && this.stfHaData[stfIndex - 1].bull
+      && this.stfHaData[stfIndex].bear
+      //&& rsiValues[i] > 60
     ) {
       //console.log('rsiValues[stfIndex]', rsiValues[stfIndex]);
       console.log('Entry bear setup', this.utils.getDate(data[i].time));
