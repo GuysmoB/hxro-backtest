@@ -34,8 +34,8 @@ export class AppComponent implements OnInit {
 
   async ngOnInit() {
     //this.htfData = await this.getDataFromApi("https://btc.history.hxro.io/1h");
-    //this.data = await this.getDataFromApi("https://btc.history.hxro.io/1m");
-    this.data = await this.getDataFromFile();
+    this.data = await this.getDataFromApi("https://btc.history.hxro.io/1m");
+    //this.data = await this.getDataFromFile();
     this.haData = this.utils.setHeikenAshiData(this.data);
     this.htfHaData = this.utils.setHeikenAshiData(this.htfData);
     console.log('data', JSON.stringify(this.data))
