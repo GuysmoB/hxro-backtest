@@ -16,6 +16,7 @@ export class AppComponent implements OnInit {
   htfData = [];
   htfHaData = [];
   data = [];
+  obData = [];
   haData = [];
   inLong = false;
   inShort = false;
@@ -27,19 +28,24 @@ export class AppComponent implements OnInit {
   dataSourceRisk: any;
   dataSourceCandle: any;
   displayChart = true;
-  lh = 0;
-  ll = 0;
 
-  constructor(private http: HttpClient, private graphService: GraphService, private utils: UtilsService) { }
+  constructor(private graphService: GraphService, private utils: UtilsService) { }
 
   async ngOnInit() {
-    //this.htfData = await this.getDataFromApi("https://btc.history.hxro.io/1h");
-    this.data = await this.getDataFromApi("https://btc.history.hxro.io/1m");
-    //this.data = await this.getDataFromFile();
+    //this.htfData = await this.utils.getDataFromApi("https://btc.history.hxro.io/1h");
+    this.data = await this.utils.getDataFromApi("https://btc.history.hxro.io/1m");
+    //this.data = await this.utils.getDataFromFile('data.txt');
     this.haData = this.utils.setHeikenAshiData(this.data);
     this.htfHaData = this.utils.setHeikenAshiData(this.htfData);
     console.log('data', JSON.stringify(this.data))
     const rsiValues = this.rsi(this.data, 14);
+
+    this.obData = await this.utils.getDataFromFile('dataOb.txt');
+    /* this.obData.forEach(element => {
+      const date = new Date(element.time);
+      element.time = date.setHours(date.getHours() + 2);
+    }) */
+
 
     for (let i = 10; i < this.data.length; i++) {
 
@@ -92,9 +98,9 @@ export class AppComponent implements OnInit {
       }
 
       const lookback = 6;
-      if (this.bullStrategy(this.haData, this.data, i, lookback, rsiValues)) {
+      if (this.bullStrategy(this.haData, this.data, i, lookback, rsiValues, this.obData)) {
         this.inLong = true;
-      } else if (this.bearStrategy(this.haData, this.data, i, lookback, rsiValues)) {
+      } else if (this.bearStrategy(this.haData, this.data, i, lookback, rsiValues, this.obData)) {
         this.inShort = true;
       }
     }
@@ -110,36 +116,6 @@ export class AppComponent implements OnInit {
 
 
 
-  /**
-   * Parse et push les donnees CSV.
-   */
-  getDataFromFile(): Promise<any> {
-    return new Promise<any>((resolve, reject) => {
-      this.http.get('assets/data.txt', { responseType: 'text' }).subscribe(
-        (data) => {
-          //console.log(JSON.parse(data))
-          resolve(JSON.parse(data));
-        },
-        (error) => {
-          console.log(error);
-          reject(error);
-        }
-      );
-    });
-  }
-
-  getDataFromApi(url: string): Promise<any> {
-    return new Promise<void>((resolve, reject) => {
-      this.http.get(url).subscribe(
-        (res: any) => {
-          resolve(res.data);
-        },
-        (error) => {
-          console.log(error);
-          reject(error);
-        })
-    })
-  }
 
 
 
@@ -181,7 +157,7 @@ export class AppComponent implements OnInit {
     ) ? true : false;
   }
 
-  bullStrategy(haData: any, data: any, i: number, lookback: number, rsiValues: any): any {
+  bullStrategy(haData: any, data: any, i: number, lookback: number, rsiValues: any, obData: any): any {
     let cond = true;
     for (let j = (i - 1); j >= (i - lookback); j--) {
       const ha = haData[j];
@@ -190,12 +166,25 @@ export class AppComponent implements OnInit {
         break;
       }
     }
-    /* if (this.utils.getDate(data[i].time) == "17/07/2021 18:53:00") {
-      console.log('STOP');
+
+    let ObCond = false;
+    let obDate;
+    const candleDate = Date.parse(this.utils.getDateFormat(data[i].time));
+
+    /* for (let k = 0; k < obData.length; k++) {
+      const element = obData[k];
+      obDate = Date.parse(this.utils.getDateFormat(element.time));
+      if (obDate == candleDate) {
+        if (element.ratio1 > 30) {
+          ObCond = true;
+          break;
+        }
+      }
     } */
 
     if (cond
       && haData[i].bull
+      //&& ObCond
       && rsiValues[i] < 40
     ) {
       console.log('Entry bull setup', this.utils.getDate(data[i].time));
@@ -206,7 +195,7 @@ export class AppComponent implements OnInit {
   }
 
 
-  bearStrategy(haData: any, data: any, i: number, lookback: number, rsiValues: any): any {
+  bearStrategy(haData: any, data: any, i: number, lookback: number, rsiValues: any, obData: any): any {
     let cond = true;
     for (let j = (i - 1); j >= (i - lookback); j--) {
       const ha = haData[j];
@@ -216,8 +205,25 @@ export class AppComponent implements OnInit {
       }
     }
 
+    let ObCond = false;
+    let obDate;
+    const candleDate = Date.parse(this.utils.getDateFormat(data[i].time));
+
+    /*   for (let k = 0; k < obData.length; k++) {
+        const element = obData[k];
+        obDate = Date.parse(this.utils.getDateFormat(element.time));
+        if (obDate == candleDate) {
+          if (element.ratio1 < -30) {
+            ObCond = true;
+            break;
+          }
+        }
+      } */
+
+
     if (cond
       && haData[i].bear
+      //&& ObCond
       && rsiValues[i] > 60
     ) {
       console.log('Entry bear setup', this.utils.getDate(data[i].time));
@@ -227,7 +233,14 @@ export class AppComponent implements OnInit {
     }
   }
 
-
+  /*   getObCandle(obData: any, data: any) {
+      obData.forEach(element => {
+        let obDate = Date.parse(this.utils.getDateFormat(element.time));
+        if (obDate == data.time) {
+            return element;
+        }
+      });
+    } */
 
   rsi(candlesticks: any, window: number): any {
     const $close = [];
