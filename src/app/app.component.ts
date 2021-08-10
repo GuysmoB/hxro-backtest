@@ -40,7 +40,7 @@ export class AppComponent implements OnInit {
     console.log('data', JSON.stringify(this.data))
     const rsiValues = this.rsi(this.data, 14);
 
-    this.obData = await this.utils.getDataFromFile('dataOb.txt');
+    //this.obData = await this.utils.getDataFromFile('dataOb.txt');
     /* this.obData.forEach(element => {
       const date = new Date(element.time);
       element.time = date.setHours(date.getHours() + 2);
