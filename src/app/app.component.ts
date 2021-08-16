@@ -4,6 +4,7 @@ import { Component, OnInit } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import * as FusionCharts from 'fusioncharts';
 import { error } from '@angular/compiler/src/util';
+import { cpuUsage } from 'process';
 
 
 @Component({
@@ -26,6 +27,7 @@ export class AppComponent implements OnInit {
   looseIncLong = 0;
   looseIncShort = 0;
   dataSourceRisk: any;
+  dataSourceOb: any;
   dataSourceCandle: any;
   displayChart = true;
 
@@ -40,12 +42,10 @@ export class AppComponent implements OnInit {
     console.log('data', JSON.stringify(this.data))
     const rsiValues = this.rsi(this.data, 14);
 
-    //this.obData = await this.utils.getDataFromFile('dataOb.txt');
-    /* this.obData.forEach(element => {
-      const date = new Date(element.time);
-      element.time = date.setHours(date.getHours() + 2);
-    }) */
-
+    this.obData = await this.utils.getDataFromFile('dataOb.txt');
+    this.obData.forEach(element => {
+      element.date = new Date(element.time);
+    });
 
     for (let i = 10; i < this.data.length; i++) {
 
@@ -110,7 +110,7 @@ export class AppComponent implements OnInit {
     console.log('Total R:R', this.utils.round(this.loseTrades.reduce((a, b) => a + b, 0) + this.winTrades.reduce((a, b) => a + b, 0), 2));
     console.log('Avg R:R', this.utils.round(this.allTrades.reduce((a, b) => a + b, 0) / this.allTrades.length, 2));
     console.log('Winrate ' + this.utils.round((this.winTrades.length / (this.loseTrades.length + this.winTrades.length)) * 100, 2) + '%');
-    this.initGraphProperties(this.data, this.allTrades);
+    this.initGraphProperties(this.data, this.allTrades, this.obData);
   }
 
 
@@ -123,9 +123,13 @@ export class AppComponent implements OnInit {
   /**
   * Initiation des propriétés du graphique.
   */
-  initGraphProperties(data: any, dataRisk: any): void {
+  initGraphProperties(data: any, dataRisk: any, obData: any): void {
     const finalData = data.map((res) => {
       return [this.utils.getDateFormat(res.time), res.open, res.high, res.low, res.close];
+    });
+
+    const finalObData = obData.map((res) => {
+      return [this.utils.getDateFormat(res.date), res.ratio2p5];
     });
 
     const fusionTable = new FusionCharts.DataStore().createDataTable(finalData, this.graphService.schema);
@@ -134,6 +138,10 @@ export class AppComponent implements OnInit {
 
     this.dataSourceRisk = this.graphService.dataRisk;
     this.dataSourceRisk.data = this.utils.formatDataForGraphLine(dataRisk);
+
+    const fusionObTable = new FusionCharts.DataStore().createDataTable(finalObData, this.graphService.schemaOb);
+    this.dataSourceOb = this.graphService.dataSourceOb;
+    this.dataSourceOb.data = fusionObTable;
   }
 
   getHtfHeikenAshi(j: number) {

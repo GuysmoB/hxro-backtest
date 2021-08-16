@@ -122,6 +122,18 @@ export class UtilsService {
   }
 
 
+  /**
+ * Retourne un tableau avec la date et la valeur OB
+ */
+  formatObDataForGraphLine(data: any): any {
+    const result = [];
+
+    for (let i = 0; i < data.length; i++) {
+      result.push({ label: data[i].date, value: data[i].ratio1 });
+    }
+    return result;
+  }
+
 
   /**
   * Retourne la date avec décalage horaire.

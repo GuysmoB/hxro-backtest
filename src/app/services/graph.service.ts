@@ -62,6 +62,41 @@ export class GraphService {
 
 
 
+
+  /*
+
+  OB
+
+  */
+  schemaOb = [
+    {
+      name: 'Date',
+      type: 'date',
+      format: '%Y-%m-%d %H:%M'
+    },
+    {
+      name: 'Ratio1',
+      type: 'number'
+    }
+  ];
+
+  dataSourceOb = {
+    chart: {
+      theme: 'candy'
+    },
+    data: null,
+    yaxis: [
+      {
+        plot: {
+          value: 'Ratio1',
+          type: 'line',
+          connectnulldata: true
+        }
+      }
+    ]
+  };
+
+
   dataRisk = {
     chart: {
       caption: 'Gains en R:R',
@@ -74,17 +109,6 @@ export class GraphService {
     data: []
   };
 
-  dataInterest = {
-    chart: {
-      caption: 'Intérêts composés',
-      yaxisname: '$',
-      rotatelabels: '1',
-      setadaptiveymin: '1',
-      theme: 'fusion',
-      drawAnchors: '0',
-    },
-    data: []
-  };
 
   constructor() { }
 }
