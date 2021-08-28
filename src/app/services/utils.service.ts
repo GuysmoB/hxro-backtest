@@ -160,7 +160,7 @@ export class UtilsService {
     const day = '0' + date.getDate();
     const hours = '0' + date.getHours();
     const minutes = '0' + date.getMinutes();
-    return year + '-' + month + '-' + day.substr(-2) + ' ' + hours.substr(-2) + ':' + minutes.substr(-2);
+    return year + '-' + month.substr(-2) + '-' + day.substr(-2) + ' ' + hours.substr(-2) + ':' + minutes.substr(-2);
   }
 
   /**
@@ -227,8 +227,8 @@ export class UtilsService {
           for (let index = 1; index < csvToRowArray.length - 1; index++) {
             const element = csvToRowArray[index].split(','); // d, o, h, l, c, v
             allData.push({
-              time: +element[0],
-              open: +parseFloat(element[1]),
+              time: +(element[0] + '000'),
+              open: + parseFloat(element[1]),
               high: +parseFloat(element[2]),
               low: +parseFloat(element[3]),
               close: +parseFloat(element[4])

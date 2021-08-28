@@ -13,8 +13,6 @@ import { indicatorExponentialMovingAverage } from '@d3fc/d3fc-technical-indicato
 })
 export class AppComponent implements OnInit {
 
-  htfData = [];
-  htfHaData = [];
   data = [];
   obData = [];
   haData = [];
@@ -36,10 +34,9 @@ export class AppComponent implements OnInit {
     //this.htfData = await this.utils.getDataFromApi("https://btc.history.hxro.io/1h");
     //this.data = await this.utils.getDataFromApi("https://btc.history.hxro.io/1m");
     //this.data = await this.utils.getDataFromFile('btc1_hxro.txt');
-    //this.data = await this.utils.getDataFromCsv('eth1_kraken.txt');
-    this.data = await this.utils.getBnbFromCsv('bnb1_cryptodl.txt');
+    this.data = await this.utils.getDataFromCsv('eth1_kraken.txt');
+    //this.data = await this.utils.getBnbFromCsv('bnb1_cryptodl.txt');
     this.haData = this.utils.setHeikenAshiData(this.data);
-    this.htfHaData = this.utils.setHeikenAshiData(this.htfData);
 
     const rsiValues = this.rsi(this.data, 14);
     const emaTrend = indicatorExponentialMovingAverage().period(150).value((d) => d.close);
@@ -96,6 +93,10 @@ export class AppComponent implements OnInit {
         }
       }
 
+      if (this.inLong && this.inShort) {
+        console.log('bug')
+      }
+
       const lookback = 2;
       if (this.bullStrategy(this.haData, this.data, i, lookback, rsiValues, emaTrendData)) {
         this.inLong = true;
@@ -143,18 +144,6 @@ export class AppComponent implements OnInit {
     this.dataSourceOb.data = fusionObTable;
   }
 
-  getHtfHeikenAshi(j: number) {
-    const stfTime = this.data[j].time;
-
-    for (let i = 2; i < this.htfData.length; i++) {
-      const htfTime = this.htfData[i].time;
-      const htfTime1 = this.htfData[i - 1].time;
-
-      if (stfTime > htfTime1 && stfTime < htfTime) {
-        return this.htfHaData[i - 2];
-      }
-    }
-  }
 
   stopConditions(i: number): boolean {
     return (
@@ -165,15 +154,6 @@ export class AppComponent implements OnInit {
   }
 
   bullStrategy(haData: any, data: any, i: number, lookback: number, rsiValues: any, ema: any): any {
-    const emaDiff = ema[i] - ema[i - 10];
-    let seuil: number;
-    if (emaDiff > 0) {
-      seuil = 40;
-      //lookback = lookback - 1;
-    } else {
-      seuil = 40;
-    }
-
     let cond = true;
     for (let j = (i - 1); j >= (i - lookback); j--) {
       const ha = haData[j];
@@ -185,7 +165,7 @@ export class AppComponent implements OnInit {
 
     if (cond
       && haData[i].bull
-      && rsiValues[i] < seuil
+      && rsiValues[i] < 40
     ) {
       //console.log('Entry bull setup', this.utils.getDate(data[i].time));
       return true;
@@ -196,15 +176,6 @@ export class AppComponent implements OnInit {
 
 
   bearStrategy(haData: any, data: any, i: number, lookback: number, rsiValues: any, ema: any): any {
-    const emaDiff = ema[i] - ema[i - 10];
-    let seuil: number;
-    if (emaDiff < 0) {
-      seuil = 60;
-      //lookback = lookback - 1;
-    } else {
-      seuil = 60;
-    }
-
     let cond = true;
     for (let j = (i - 1); j >= (i - lookback); j--) {
       const ha = haData[j];
@@ -216,7 +187,7 @@ export class AppComponent implements OnInit {
 
     if (cond
       && haData[i].bear
-      && rsiValues[i] > seuil
+      && rsiValues[i] > 60
     ) {
       //console.log('Entry bear setup', this.utils.getDate(data[i].time));
       return true;
