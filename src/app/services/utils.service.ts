@@ -216,6 +216,66 @@ export class UtilsService {
   }
 
   /**
+   * Parse et push les donnees CSV.
+   */
+  getDataFromCsv(file: string): Promise<any> {
+    let allData = [];
+    return new Promise<any>((resolve, reject) => {
+      this.http.get('assets/' + file, { responseType: 'text' }).subscribe(
+        (data) => {
+          const csvToRowArray = data.split('\r\n');
+          for (let index = 1; index < csvToRowArray.length - 1; index++) {
+            const element = csvToRowArray[index].split(','); // d, o, h, l, c, v
+            allData.push({
+              time: +element[0],
+              open: +parseFloat(element[1]),
+              high: +parseFloat(element[2]),
+              low: +parseFloat(element[3]),
+              close: +parseFloat(element[4])
+            });
+          }
+          console.log(allData[0])
+          resolve(allData);
+        },
+        (error) => {
+          console.log(error);
+          reject(error);
+        }
+      );
+    });
+  }
+
+  /**
+  * Parse et push les donnees BNB.
+  */
+  getBnbFromCsv(file: string): Promise<any> {
+    let allData = [];
+    return new Promise<any>((resolve, reject) => {
+      this.http.get('assets/' + file, { responseType: 'text' }).subscribe(
+        (data) => {
+          const csvToRowArray = data.split('\r\n');
+          for (let index = 1; index < csvToRowArray.length - 1; index++) {
+            const element = csvToRowArray[index].split(','); // d, o, h, l, c, v
+            allData.push({
+              time: +element[0],
+              open: +parseFloat(element[3]),
+              high: +parseFloat(element[4]),
+              low: +parseFloat(element[5]),
+              close: +parseFloat(element[6])
+            });
+          }
+          console.log(allData.reverse()[0])
+          resolve(allData.reverse());
+        },
+        (error) => {
+          console.log(error);
+          reject(error);
+        }
+      );
+    });
+  }
+
+  /**
    * Récupère les données depuis l'API url
    */
   getDataFromApi(url: string): Promise<any> {
