@@ -1,3 +1,4 @@
+import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 
 @Injectable({
@@ -5,7 +6,7 @@ import { Injectable } from '@angular/core';
 })
 export class UtilsService {
 
-  constructor() {
+  constructor(private http: HttpClient) {
   }
 
   /**
@@ -101,7 +102,67 @@ export class UtilsService {
   }
 
 
+  /**
+   * Parse et push les donnees CSV.
+   */
+  getDataFromFile(file: string): Promise<any> {
+    return new Promise<any>((resolve, reject) => {
+      this.http.get('assets/' + file, { responseType: 'text' }).subscribe(
+        (data) => {
+          //console.log(JSON.parse(data))
+          resolve(JSON.parse(data));
+        },
+        (error) => {
+          console.log(error);
+          reject(error);
+        }
+      );
+    });
+  }
 
+  getDataFromApi(url: string): Promise<any> {
+    return new Promise<void>((resolve, reject) => {
+      this.http.get(url).subscribe(
+        (res: any) => {
+          resolve(res.data);
+        },
+        (error) => {
+          console.log(error);
+          reject(error);
+        })
+    })
+  }
+
+
+  /**
+     * Parse et push les donnees CSV.
+     */
+  getDataFromCsv(file: string): Promise<any> {
+    let allData = [];
+    return new Promise<any>((resolve, reject) => {
+      this.http.get('assets/' + file, { responseType: 'text' }).subscribe(
+        (data) => {
+          const csvToRowArray = data.split('\r\n');
+          for (let index = 1; index < csvToRowArray.length - 1; index++) {
+            const element = csvToRowArray[index].split(','); // d, o, h, l, c, v
+            allData.push({
+              time: +element[0],
+              open: +parseFloat(element[1]),
+              high: +parseFloat(element[2]),
+              low: +parseFloat(element[3]),
+              close: +parseFloat(element[4])
+            });
+          }
+          console.log(allData[0])
+          resolve(allData);
+        },
+        (error) => {
+          console.log(error);
+          reject(error);
+        }
+      );
+    });
+  }
 
   /**
    * Retourne un tableau avec la somme des R:R pour le graph line
@@ -154,13 +215,6 @@ export class UtilsService {
    * Prend en compte les fees de Hxro
    */
   addFees(gain: number) {
-    /* for (let i = 0; i < allTrades.length; i++) {
-      const element = allTrades[i];
-      if (element !== -1) {
-        allTrades[i] = element - (element * 0.03);
-      }
-    }
-    return allTrades; */
     return gain - (gain * 0.03)
   }
 

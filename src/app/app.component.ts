@@ -35,12 +35,15 @@ export class AppComponent implements OnInit {
   constructor(private http: HttpClient, private graphService: GraphService, private utils: UtilsService) { }
 
   async ngOnInit() {
-    this.data = await this.getDataFromApi("https://btc.history.hxro.io/5m");
+    //this.data = await this.utils.getDataFromApi("https://btc.history.hxro.io/5m");
     //this.stfData = await this.getDataFromApi("https://btc.history.hxro.io/1m");
-    this.stfData = await this.getDataFromFile();
+    this.data = await this.utils.getDataFromCsv('btc5_kraken.txt');
+    //this.stfData = await this.utils.getDataFromCsv('btc1_kraken.txt');
+    this.stfData = await this.utils.getDataFromFile('btc1_hxro.txt');
+    console.log(this.data)
     this.haData = this.utils.setHeikenAshiData(this.data);
     this.stfHaData = this.utils.setHeikenAshiData(this.stfData);
-    console.log('data', JSON.stringify(this.data))
+
     const stfRsiValues = this.rsi(this.stfData, 14);
     const emaSlow = indicatorExponentialMovingAverage().period(20).value(d => d.close);
     this.emaSlowData = emaSlow(this.stfData);
@@ -50,7 +53,8 @@ export class AppComponent implements OnInit {
 
     for (let i = 10; i < this.data.length; i++) {
 
-      const lookback = 6;
+      if ()
+        const lookback = 6;
       if (this.bullStrategy(this.haData, this.data, i, lookback, stfRsiValues)) {
         this.inLong = true;
       } else if (this.bearStrategy(this.haData, this.data, i, lookback, stfRsiValues)) {
@@ -61,56 +65,34 @@ export class AppComponent implements OnInit {
         if (this.isUp(this.data, i, 0)) {
           this.allTrades.push(this.utils.addFees(0.91));
           this.winTrades.push(this.utils.addFees(0.91));
-          console.log('Resultat ++', this.round(this.utils.arraySum(this.allTrades), 2), this.utils.getDate(this.data[i].time));
+          //console.log('Resultat ++', this.round(this.utils.arraySum(this.allTrades), 2), this.utils.getDate(this.data[i].time));
           this.looseIncLong = 0;
         } else {
           this.allTrades.push(-1);
           this.loseTrades.push(-1);
-          console.log('Resultat --', this.round(this.utils.arraySum(this.allTrades), 2), this.utils.getDate(this.data[i].time));
+          //console.log('Resultat --', this.round(this.utils.arraySum(this.allTrades), 2), this.utils.getDate(this.data[i].time));
           this.looseIncLong++;
         }
 
         this.inLong = false; // ####################
-        console.log('Exit bull setup', this.utils.getDate(this.data[i].time));
-
-        /*  if (this.stopConditions(i)) {
-           this.inLong = false;
-           this.looseIncLong = 0;
-           console.log('Exit bull loose streak', this.utils.getDate(this.data[i].time));
-         } else if (this.haData[i].bear) {
-           this.inLong = false;
-           this.looseIncLong = 0;
-           console.log('Exit bull setup', this.utils.getDate(this.data[i].time));
-         } */
+        //console.log('Exit bull setup', this.utils.getDate(this.data[i].time));
       }
 
       else if (this.inShort) {
         if (!this.isUp(this.data, i, 0)) {
           this.allTrades.push(this.utils.addFees(0.91));
           this.winTrades.push(this.utils.addFees(0.91));
-          console.log('Resultat ++', this.round(this.utils.arraySum(this.allTrades), 2), this.utils.getDate(this.data[i].time));
+          //console.log('Resultat ++', this.round(this.utils.arraySum(this.allTrades), 2), this.utils.getDate(this.data[i].time));
           this.looseIncShort = 0;
         } else {
           this.allTrades.push(-1);
           this.loseTrades.push(-1);
-          console.log('Resultat --', this.round(this.utils.arraySum(this.allTrades), 2), this.utils.getDate(this.data[i].time));
+          //console.log('Resultat --', this.round(this.utils.arraySum(this.allTrades), 2), this.utils.getDate(this.data[i].time));
           this.looseIncShort++;
         }
         this.inShort = false; // ###############
-        console.log('Exit short setup', this.utils.getDate(this.data[i].time));
-
-        /* if (this.stopConditions(i)) {
-          this.inShort = false;
-          this.looseIncShort = 0;
-          console.log('Exit short loose streak', this.utils.getDate(this.data[i].time));
-        } else if (this.haData[i].bull) {
-          this.inShort = false;
-          this.looseIncShort = 0;
-          console.log('Exit short setup', this.utils.getDate(this.data[i].time));
-        } */
+        //console.log('Exit short setup', this.utils.getDate(this.data[i].time));
       }
-
-
     }
 
     console.log('-------------');
@@ -120,41 +102,6 @@ export class AppComponent implements OnInit {
     console.log('Winrate ' + this.utils.round((this.winTrades.length / (this.loseTrades.length + this.winTrades.length)) * 100, 2) + '%');
     this.initGraphProperties(this.data, this.allTrades);
   }
-
-
-
-
-  /**
-   * Parse et push les donnees CSV.
-   */
-  getDataFromFile(): Promise<any> {
-    return new Promise<any>((resolve, reject) => {
-      this.http.get('assets/data.txt', { responseType: 'text' }).subscribe(
-        (data) => {
-          //console.log(JSON.parse(data))
-          resolve(JSON.parse(data));
-        },
-        (error) => {
-          console.log(error);
-          reject(error);
-        }
-      );
-    });
-  }
-
-  getDataFromApi(url: string): Promise<any> {
-    return new Promise<void>((resolve, reject) => {
-      this.http.get(url).subscribe(
-        (res: any) => {
-          resolve(res.data);
-        },
-        (error) => {
-          console.log(error);
-          reject(error);
-        })
-    })
-  }
-
 
 
 
@@ -210,29 +157,37 @@ export class AppComponent implements OnInit {
   }
 
   bullStrategy(haData: any, data: any, i: number, lookback: number, rsiValues: any): any {
-    let cond = true;
-    for (let j = (i - 1); j >= (i - lookback); j--) {
-      const ha = this.stfHaData[j];
-      if (ha.close > ha.open) { // if bull
-        cond = false;
-        break;
+    try {
+      let cond = true;
+      for (let j = (i - 1); j >= (i - lookback); j--) {
+        const ha = this.stfHaData[j];
+        if (i == 56642) {
+          console.log('test')
+        }
+        if (ha?.close > ha?.open) { // if bull
+          cond = false;
+          break;
+        }
       }
+
+      const stfIndex = this.getStfCandle(i);
+
+      if (data[i].time > this.stfData[10].time
+        && rsiValues[stfIndex] < 40
+        && this.stfHaData[stfIndex - 4].bear && this.stfHaData[stfIndex - 3].bear && this.stfHaData[stfIndex - 2].bear && this.stfHaData[stfIndex - 1].bear
+        && this.stfHaData[stfIndex].bull
+        //&& rsiValues[i] < 40
+      ) {
+        //console.log('rsiValues[stfIndex]', rsiValues[stfIndex]);
+        //console.log('Entry bull setup', this.utils.getDate(data[i].time));
+        return true;
+      } else {
+        return false;
+      }
+    } catch (error) {
+      console.log(error, i)
     }
 
-    const stfIndex = this.getStfCandle(i);
-
-    if (data[i].time > this.stfData[10].time
-      && rsiValues[stfIndex] < 40
-      && this.stfHaData[stfIndex - 4].bear && this.stfHaData[stfIndex - 3].bear && this.stfHaData[stfIndex - 2].bear && this.stfHaData[stfIndex - 1].bear
-      && this.stfHaData[stfIndex].bull
-      //&& rsiValues[i] < 40
-    ) {
-      //console.log('rsiValues[stfIndex]', rsiValues[stfIndex]);
-      console.log('Entry bull setup', this.utils.getDate(data[i].time));
-      return true;
-    } else {
-      return false;
-    }
   }
 
 
@@ -240,7 +195,7 @@ export class AppComponent implements OnInit {
     let cond = true;
     for (let j = (i - 1); j >= (i - lookback); j--) {
       const ha = this.stfHaData[j];
-      if (ha.close < ha.open) { // if bear
+      if (ha?.close < ha?.open) { // if bear
         cond = false;
         break;
       }
@@ -255,7 +210,7 @@ export class AppComponent implements OnInit {
       //&& rsiValues[i] > 60
     ) {
       //console.log('rsiValues[stfIndex]', rsiValues[stfIndex]);
-      console.log('Entry bear setup', this.utils.getDate(data[i].time));
+      //console.log('Entry bear setup', this.utils.getDate(data[i].time));
       return true;
     } else {
       return false;
