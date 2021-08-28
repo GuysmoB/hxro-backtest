@@ -146,15 +146,43 @@ export class UtilsService {
           for (let index = 1; index < csvToRowArray.length - 1; index++) {
             const element = csvToRowArray[index].split(','); // d, o, h, l, c, v
             allData.push({
-              time: +element[0],
+              time: +(element[0] + '000'),
               open: +parseFloat(element[1]),
               high: +parseFloat(element[2]),
               low: +parseFloat(element[3]),
               close: +parseFloat(element[4])
             });
           }
-          console.log(allData[0])
           resolve(allData);
+        },
+        (error) => {
+          console.log(error);
+          reject(error);
+        }
+      );
+    });
+  }
+
+  /**
+* Parse et push les donnees BNB.
+*/
+  getBnbFromCsv(): Promise<any> {
+    let allData = [];
+    return new Promise<any>((resolve, reject) => {
+      this.http.get('assets/bnb1_cryptodl.txt', { responseType: 'text' }).subscribe(
+        (data) => {
+          const csvToRowArray = data.split('\r\n');
+          for (let index = 1; index < csvToRowArray.length - 1; index++) {
+            const element = csvToRowArray[index].split(','); // d, o, h, l, c, v
+            allData.push({
+              time: +element[0],
+              open: +parseFloat(element[3]),
+              high: +parseFloat(element[4]),
+              low: +parseFloat(element[5]),
+              close: +parseFloat(element[6])
+            });
+          }
+          resolve(allData.reverse());
         },
         (error) => {
           console.log(error);
@@ -208,7 +236,7 @@ export class UtilsService {
     const day = '0' + date.getDate();
     const hours = '0' + date.getHours();
     const minutes = '0' + date.getMinutes();
-    return year + '-' + month + '-' + day.substr(-2) + ' ' + hours.substr(-2) + ':' + minutes.substr(-2);
+    return year + '-' + month.substr(-2) + '-' + day.substr(-2) + ' ' + hours.substr(-2) + ':' + minutes.substr(-2);
   }
 
   /**

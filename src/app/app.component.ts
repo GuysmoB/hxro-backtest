@@ -13,11 +13,7 @@ import { indicatorExponentialMovingAverage } from '@d3fc/d3fc-technical-indicato
 })
 export class AppComponent implements OnInit {
 
-  htfData = [];
-  htfHaData = [];
   data = [];
-  stfData = [];
-  stfHaData = [];
   haData = [];
   inLong = false;
   inShort = false;
@@ -31,77 +27,136 @@ export class AppComponent implements OnInit {
   displayChart = true;
   emaFastData: any;
   emaSlowData: any;
+  iSnap: number;
 
-  constructor(private http: HttpClient, private graphService: GraphService, private utils: UtilsService) { }
+  constructor(private graphService: GraphService, private utils: UtilsService) { }
 
   async ngOnInit() {
-    //this.data = await this.utils.getDataFromApi("https://btc.history.hxro.io/5m");
-    //this.stfData = await this.getDataFromApi("https://btc.history.hxro.io/1m");
-    this.data = await this.utils.getDataFromCsv('btc5_kraken.txt');
-    //this.stfData = await this.utils.getDataFromCsv('btc1_kraken.txt');
-    this.stfData = await this.utils.getDataFromFile('btc1_hxro.txt');
-    console.log(this.data)
+    this.data = await this.utils.getDataFromCsv('btc1_kraken.txt');
+    //this.data = await this.utils.getBnbFromCsv();
+    console.log(this.data[0])
     this.haData = this.utils.setHeikenAshiData(this.data);
-    this.stfHaData = this.utils.setHeikenAshiData(this.stfData);
 
-    const stfRsiValues = this.rsi(this.stfData, 14);
-    const emaSlow = indicatorExponentialMovingAverage().period(20).value(d => d.close);
-    this.emaSlowData = emaSlow(this.stfData);
+    let rsiValues = this.rsi(this.data, 14);
+    const emaTrend = indicatorExponentialMovingAverage().period(150).value((d) => d.close);
+    const emaTrendData = emaTrend(this.data);
 
-    const emaFast = indicatorExponentialMovingAverage().period(10).value(d => d.close);
-    this.emaFastData = emaFast(this.stfData);
+    for (let j = 0; j < 1; j++) {
+      for (let i = 10; i < this.data.length; i++) {
 
-    for (let i = 10; i < this.data.length; i++) {
-
-      if ()
-        const lookback = 6;
-      if (this.bullStrategy(this.haData, this.data, i, lookback, stfRsiValues)) {
-        this.inLong = true;
-      } else if (this.bearStrategy(this.haData, this.data, i, lookback, stfRsiValues)) {
-        this.inShort = true;
-      }
-
-      if (this.inLong) {
-        if (this.isUp(this.data, i, 0)) {
-          this.allTrades.push(this.utils.addFees(0.91));
-          this.winTrades.push(this.utils.addFees(0.91));
-          //console.log('Resultat ++', this.round(this.utils.arraySum(this.allTrades), 2), this.utils.getDate(this.data[i].time));
-          this.looseIncLong = 0;
-        } else {
-          this.allTrades.push(-1);
-          this.loseTrades.push(-1);
-          //console.log('Resultat --', this.round(this.utils.arraySum(this.allTrades), 2), this.utils.getDate(this.data[i].time));
-          this.looseIncLong++;
+        if (this.inLong) {
+          if (i == this.iSnap + 5) {
+            if (this.isUpInterval(this.data, i, 5)) {
+              this.allTrades.push(this.utils.addFees(0.91));
+              this.winTrades.push(this.utils.addFees(0.91));
+              //console.log('Resultat ++', this.round(this.utils.arraySum(this.allTrades), 2), this.utils.getDate(this.data[i].time));
+              this.looseIncLong = 0;
+            } else {
+              this.allTrades.push(-1);
+              this.loseTrades.push(-1);
+              //console.log('Resultat --', this.round(this.utils.arraySum(this.allTrades), 2), this.utils.getDate(this.data[i].time));
+              this.looseIncLong++;
+            }
+            this.inLong = false;
+          }
         }
 
-        this.inLong = false; // ####################
-        //console.log('Exit bull setup', this.utils.getDate(this.data[i].time));
+        else if (this.inShort) {
+          if (i == this.iSnap + 5) {
+            if (!this.isUpInterval(this.data, i, 5)) {
+              this.allTrades.push(this.utils.addFees(0.91));
+              this.winTrades.push(this.utils.addFees(0.91));
+              //console.log('Resultat ++', this.round(this.utils.arraySum(this.allTrades), 2), this.utils.getDate(this.data[i].time));
+              this.looseIncShort = 0;
+            } else {
+              this.allTrades.push(-1);
+              this.loseTrades.push(-1);
+              //console.log('Resultat --', this.round(this.utils.arraySum(this.allTrades), 2), this.utils.getDate(this.data[i].time));
+              this.looseIncShort++;
+            }
+            this.inShort = false;
+          }
+        }
+
+        if ((this.inLong && this.inShort)) {
+          console.log('test');;
+        }
+
+        if ((this.inLong || this.inShort) && i >= this.iSnap + 5) {
+          console.log('test');;
+        }
+
+        if (!this.inLong && !this.inShort) {
+          let date = '0' + new Date(this.data[i].time).getMinutes();
+          if (date.substr(-1) == '4' || date.substr(-1) == '9') {
+            const lookback = 1;
+            if (this.bullStrategy(this.haData, this.data, i, lookback, rsiValues, emaTrendData)) {
+              this.inLong = true;
+              this.iSnap = i;
+            } else if (this.bearStrategy(this.haData, this.data, i, lookback, rsiValues, emaTrendData)) {
+              this.inShort = true;
+              this.iSnap = i;
+            }
+          }
+        }
+
       }
 
-      else if (this.inShort) {
-        if (!this.isUp(this.data, i, 0)) {
-          this.allTrades.push(this.utils.addFees(0.91));
-          this.winTrades.push(this.utils.addFees(0.91));
-          //console.log('Resultat ++', this.round(this.utils.arraySum(this.allTrades), 2), this.utils.getDate(this.data[i].time));
-          this.looseIncShort = 0;
-        } else {
-          this.allTrades.push(-1);
-          this.loseTrades.push(-1);
-          //console.log('Resultat --', this.round(this.utils.arraySum(this.allTrades), 2), this.utils.getDate(this.data[i].time));
-          this.looseIncShort++;
-        }
-        this.inShort = false; // ###############
-        //console.log('Exit short setup', this.utils.getDate(this.data[i].time));
+      console.log('-------------');
+      console.log('Trades : Gagnes / Perdus / Total', this.winTrades.length, this.loseTrades.length, this.winTrades.length + this.loseTrades.length);
+      console.log('Total R:R', this.utils.round(this.loseTrades.reduce((a, b) => a + b, 0) + this.winTrades.reduce((a, b) => a + b, 0), 2));
+      console.log('Avg R:R', this.utils.round(this.allTrades.reduce((a, b) => a + b, 0) / this.allTrades.length, 2));
+      console.log('Winrate ' + this.utils.round((this.winTrades.length / (this.loseTrades.length + this.winTrades.length)) * 100, 2) + '%');
+      this.initGraphProperties(this.data, this.allTrades);
+      this.allTrades = [];
+      this.winTrades = [];
+      this.loseTrades = [];
+    }
+
+  }
+
+
+
+
+  bullStrategy(haData: any, data: any, i: number, lookback: number, rsiValues: any, ema: any): any {
+    let cond = true;
+    for (let j = (i - 1); j >= (i - lookback); j--) {
+      if (haData[j].bull) {
+        cond = false;
+        break;
       }
     }
 
-    console.log('-------------');
-    console.log('Trades : Gagnes / Perdus / Total', this.winTrades.length, this.loseTrades.length, this.winTrades.length + this.loseTrades.length);
-    console.log('Total R:R', this.utils.round(this.loseTrades.reduce((a, b) => a + b, 0) + this.winTrades.reduce((a, b) => a + b, 0), 2));
-    console.log('Avg R:R', this.utils.round(this.allTrades.reduce((a, b) => a + b, 0) / this.allTrades.length, 2));
-    console.log('Winrate ' + this.utils.round((this.winTrades.length / (this.loseTrades.length + this.winTrades.length)) * 100, 2) + '%');
-    this.initGraphProperties(this.data, this.allTrades);
+    if (cond &&
+      rsiValues[i] < 35
+    ) {
+      //console.log('Entry bull setup', this.utils.getDate(data[i].time));
+      return true;
+    } else {
+      return false;
+    }
   }
+
+
+  bearStrategy(haData: any, data: any, i: number, lookback: number, rsiValues: any, ema: any): any {
+    let cond = true;
+    for (let j = (i - 1); j >= (i - lookback); j--) {
+      if (haData[j].bear) {
+        cond = false;
+        break;
+      }
+    }
+
+    if (cond &&
+      rsiValues[i] > 65
+    ) {
+      //console.log('Entry bear setup', this.utils.getDate(data[i].time));
+      return true;
+    } else {
+      return false;
+    }
+  }
+
 
 
 
@@ -109,7 +164,7 @@ export class AppComponent implements OnInit {
   * Initiation des propriétés du graphique.
   */
   initGraphProperties(data: any, dataRisk: any): void {
-    const finalData = this.data.map((res) => {
+    const finalData = data.map((res) => {
       return [this.utils.getDateFormat(res.time), res.open, res.high, res.low, res.close];
     });
 
@@ -120,103 +175,6 @@ export class AppComponent implements OnInit {
     this.dataSourceRisk = this.graphService.dataRisk;
     this.dataSourceRisk.data = this.utils.formatDataForGraphLine(dataRisk);
   }
-
-  getHtfHeikenAshi(j: number) {
-    const stfTime = this.data[j].time;
-
-    for (let i = 2; i < this.htfData.length; i++) {
-      const htfTime = this.htfData[i].time;
-      const htfTime1 = this.htfData[i - 1].time;
-
-      if (stfTime > htfTime1 && stfTime < htfTime) {
-        return this.htfHaData[i - 2];
-      }
-    }
-  }
-
-
-  getStfCandle(j: number) {
-    const htfTime = this.data[j].time;
-
-    for (let i = 2; i < this.stfData.length; i++) {
-      const stfTime = this.stfData[i].time;
-
-      if (stfTime > htfTime) {
-        //console.log('time', this.utils.getDate(stfTime));
-        return i - 2;
-      }
-    }
-  }
-
-  stopConditions(i: number): boolean {
-    return (
-      this.looseIncLong == 5 ||
-      this.looseIncShort == 5 ||
-      Math.abs(this.high(this.data, i, 0) - this.low(this.data, i, 0)) > 50
-    ) ? true : false;
-  }
-
-  bullStrategy(haData: any, data: any, i: number, lookback: number, rsiValues: any): any {
-    try {
-      let cond = true;
-      for (let j = (i - 1); j >= (i - lookback); j--) {
-        const ha = this.stfHaData[j];
-        if (i == 56642) {
-          console.log('test')
-        }
-        if (ha?.close > ha?.open) { // if bull
-          cond = false;
-          break;
-        }
-      }
-
-      const stfIndex = this.getStfCandle(i);
-
-      if (data[i].time > this.stfData[10].time
-        && rsiValues[stfIndex] < 40
-        && this.stfHaData[stfIndex - 4].bear && this.stfHaData[stfIndex - 3].bear && this.stfHaData[stfIndex - 2].bear && this.stfHaData[stfIndex - 1].bear
-        && this.stfHaData[stfIndex].bull
-        //&& rsiValues[i] < 40
-      ) {
-        //console.log('rsiValues[stfIndex]', rsiValues[stfIndex]);
-        //console.log('Entry bull setup', this.utils.getDate(data[i].time));
-        return true;
-      } else {
-        return false;
-      }
-    } catch (error) {
-      console.log(error, i)
-    }
-
-  }
-
-
-  bearStrategy(haData: any, data: any, i: number, lookback: number, rsiValues: any): any {
-    let cond = true;
-    for (let j = (i - 1); j >= (i - lookback); j--) {
-      const ha = this.stfHaData[j];
-      if (ha?.close < ha?.open) { // if bear
-        cond = false;
-        break;
-      }
-    }
-
-    const stfIndex = this.getStfCandle(i);
-
-    if (data[i].time > this.stfData[10].time
-      && rsiValues[stfIndex] > 60
-      && this.stfHaData[stfIndex - 4].bull && this.stfHaData[stfIndex - 3].bull && this.stfHaData[stfIndex - 2].bull && this.stfHaData[stfIndex - 1].bull
-      && this.stfHaData[stfIndex].bear
-      //&& rsiValues[i] > 60
-    ) {
-      //console.log('rsiValues[stfIndex]', rsiValues[stfIndex]);
-      //console.log('Entry bear setup', this.utils.getDate(data[i].time));
-      return true;
-    } else {
-      return false;
-    }
-  }
-
 
 
   rsi(candlesticks: any, window: number): any {
@@ -287,5 +245,8 @@ export class AppComponent implements OnInit {
   }
   low(data: any, index: number, lookback: number): number {
     return data[index - lookback].low;
+  }
+  isUpInterval(data: any, index: number, lookback: number) {
+    return data[index].close - data[index - lookback].close > 0;
   }
 }
