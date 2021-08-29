@@ -32,8 +32,8 @@ export class AppComponent implements OnInit {
   constructor(private graphService: GraphService, private utils: UtilsService) { }
 
   async ngOnInit() {
-    this.data = await this.utils.getDataFromCsv('btc1_kraken.txt');
-    //this.data = await this.utils.getBnbFromCsv();
+    //this.data = await this.utils.getDataFromCsv('eth1_kraken.txt');
+    this.data = await this.utils.getBnbFromCsv();
     console.log(this.data[0])
     this.haData = this.utils.setHeikenAshiData(this.data);
 
@@ -127,8 +127,7 @@ export class AppComponent implements OnInit {
       }
     }
 
-    if (cond &&
-      rsiValues[i] < 35
+    if (rsiValues[i] < 35
     ) {
       //console.log('Entry bull setup', this.utils.getDate(data[i].time));
       return true;
@@ -147,8 +146,7 @@ export class AppComponent implements OnInit {
       }
     }
 
-    if (cond &&
-      rsiValues[i] > 65
+    if (rsiValues[i] > 65
     ) {
       //console.log('Entry bear setup', this.utils.getDate(data[i].time));
       return true;
