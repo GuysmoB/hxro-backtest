@@ -1,10 +1,8 @@
 import { UtilsService } from './services/utils.service';
 import { GraphService } from './services/graph.service';
 import { Component, OnInit } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
 import * as FusionCharts from 'fusioncharts';
 import { indicatorExponentialMovingAverage } from '@d3fc/d3fc-technical-indicator';
-
 
 @Component({
   selector: 'app-root',
@@ -14,7 +12,6 @@ import { indicatorExponentialMovingAverage } from '@d3fc/d3fc-technical-indicato
 export class AppComponent implements OnInit {
 
   data = [];
-  obData = [];
   haData = [];
   inLong = false;
   inShort = false;
@@ -23,8 +20,8 @@ export class AppComponent implements OnInit {
   loseTrades = [];
   looseIncLong = 0;
   looseIncShort = 0;
+  payout = 0.91;
   dataSourceRisk: any;
-  dataSourceOb: any;
   dataSourceCandle: any;
   displayChart = true;
 
@@ -34,9 +31,11 @@ export class AppComponent implements OnInit {
     //this.htfData = await this.utils.getDataFromApi("https://btc.history.hxro.io/1h");
     //this.data = await this.utils.getDataFromApi("https://btc.history.hxro.io/1m");
     //this.data = await this.utils.getDataFromFile('btc1_hxro.txt');
-    this.data = await this.utils.getDataFromCsv('eth1_kraken.txt');
+    //this.data = await this.utils.getDataFromCsv('btc5_kraken.txt');
     //this.data = await this.utils.getBnbFromCsv('bnb1_cryptodl.txt');
+    this.data = await this.utils.getDataFromFirebase('orderbook-data');
     this.haData = this.utils.setHeikenAshiData(this.data);
+    console.log(this.data[0]);
 
     const rsiValues = this.rsi(this.data, 14);
     const emaTrend = indicatorExponentialMovingAverage().period(150).value((d) => d.close);
@@ -44,11 +43,10 @@ export class AppComponent implements OnInit {
 
 
     for (let i = 10; i < this.data.length; i++) {
-
       if (this.inLong) {
         if (this.isUp(this.data, i, 0)) {
-          this.allTrades.push(this.utils.addFees(0.91));
-          this.winTrades.push(this.utils.addFees(0.91));
+          this.allTrades.push(this.utils.addFees(this.payout));
+          this.winTrades.push(this.utils.addFees(this.payout));
           //console.log('Resultat ++', this.round(this.utils.arraySum(this.allTrades), 2), this.utils.getDate(this.data[i].time));
           this.looseIncLong = 0;
         } else {
@@ -71,8 +69,8 @@ export class AppComponent implements OnInit {
 
       else if (this.inShort) {
         if (!this.isUp(this.data, i, 0)) {
-          this.allTrades.push(this.utils.addFees(0.91));
-          this.winTrades.push(this.utils.addFees(0.91));
+          this.allTrades.push(this.utils.addFees(this.payout));
+          this.winTrades.push(this.utils.addFees(this.payout));
           //console.log('Resultat ++', this.round(this.utils.arraySum(this.allTrades), 2), this.utils.getDate(this.data[i].time));
           this.looseIncShort = 0;
         } else {
@@ -98,9 +96,9 @@ export class AppComponent implements OnInit {
       }
 
       const lookback = 2;
-      if (this.bullStrategy(this.haData, this.data, i, lookback, rsiValues, emaTrendData)) {
+      if (this.bullStrategy(this.haData, this.data, i, lookback, rsiValues)) {
         this.inLong = true;
-      } else if (this.bearStrategy(this.haData, this.data, i, lookback, rsiValues, emaTrendData)) {
+      } else if (this.bearStrategy(this.haData, this.data, i, lookback, rsiValues,)) {
         this.inShort = true;
       }
     }
@@ -110,7 +108,7 @@ export class AppComponent implements OnInit {
     console.log('Total R:R', this.utils.round(this.loseTrades.reduce((a, b) => a + b, 0) + this.winTrades.reduce((a, b) => a + b, 0), 2));
     console.log('Avg R:R', this.utils.round(this.allTrades.reduce((a, b) => a + b, 0) / this.allTrades.length, 2));
     console.log('Winrate ' + this.utils.round((this.winTrades.length / (this.loseTrades.length + this.winTrades.length)) * 100, 2) + '%');
-    this.initGraphProperties(this.data, this.allTrades, this.obData);
+    this.initGraphProperties(this.data, this.allTrades);
   }
 
 
@@ -123,13 +121,9 @@ export class AppComponent implements OnInit {
   /**
   * Initiation des propriétés du graphique.
   */
-  initGraphProperties(data: any, dataRisk: any, obData: any): void {
+  initGraphProperties(data: any, dataRisk: any): void {
     const finalData = data.map((res) => {
-      return [this.utils.getDateFormat(res.time), res.open, res.high, res.low, res.close];
-    });
-
-    const finalObData = obData.map((res) => {
-      return [this.utils.getDateFormat(res.date), res.ratio2p5];
+      return [this.utils.getDateFormat(res.time), res.open, res.high, res.low, res.close, res.ratio1,];
     });
 
     const fusionTable = new FusionCharts.DataStore().createDataTable(finalData, this.graphService.schema);
@@ -138,10 +132,6 @@ export class AppComponent implements OnInit {
 
     this.dataSourceRisk = this.graphService.dataRisk;
     this.dataSourceRisk.data = this.utils.formatDataForGraphLine(dataRisk);
-
-    const fusionObTable = new FusionCharts.DataStore().createDataTable(finalObData, this.graphService.schemaOb);
-    this.dataSourceOb = this.graphService.dataSourceOb;
-    this.dataSourceOb.data = fusionObTable;
   }
 
 
@@ -153,19 +143,20 @@ export class AppComponent implements OnInit {
     ) ? true : false;
   }
 
-  bullStrategy(haData: any, data: any, i: number, lookback: number, rsiValues: any, ema: any): any {
+  bullStrategy(haData: any, data: any, i: number, lookback: number, rsiValues: any): any {
     let cond = true;
     for (let j = (i - 1); j >= (i - lookback); j--) {
-      const ha = haData[j];
-      if (ha.close > ha.open) { // if bull
+      if (haData[j].bull) {
         cond = false;
         break;
       }
     }
 
+
     if (cond
       && haData[i].bull
-      && rsiValues[i] < 40
+      //&& rsiValues[i] < 40
+      //&& ObCond
     ) {
       //console.log('Entry bull setup', this.utils.getDate(data[i].time));
       return true;
@@ -175,11 +166,10 @@ export class AppComponent implements OnInit {
   }
 
 
-  bearStrategy(haData: any, data: any, i: number, lookback: number, rsiValues: any, ema: any): any {
+  bearStrategy(haData: any, data: any, i: number, lookback: number, rsiValues: any): any {
     let cond = true;
     for (let j = (i - 1); j >= (i - lookback); j--) {
-      const ha = haData[j];
-      if (ha.close < ha.open) { // if bear
+      if (haData[j].bear) {
         cond = false;
         break;
       }
@@ -187,7 +177,8 @@ export class AppComponent implements OnInit {
 
     if (cond
       && haData[i].bear
-      && rsiValues[i] > 60
+      //&& rsiValues[i] > 60
+      //&& ObCond
     ) {
       //console.log('Entry bear setup', this.utils.getDate(data[i].time));
       return true;
