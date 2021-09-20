@@ -35,11 +35,19 @@ export class AppComponent implements OnInit {
     //this.data = await this.utils.getBnbFromCsv('bnb1_cryptodl.txt');
     this.data = await this.utils.getDataFromFirebase('orderbook-data');
     this.haData = this.utils.setHeikenAshiData(this.data);
-    console.log(this.data[0]);
+
+    console.log(this.data.length, this.data[0]);
+    for (let i = this.data.length - 1; i >= 0; i--) {
+      if (this.data[i]?.ratio1 == this.data[i - 1]?.ratio1 && this.data[i]?.ratio2p5 == this.data[i - 1]?.ratio2p5 && this.data[i]?.ratio5 == this.data[i - 1]?.ratio5) {
+        this.data.splice(i, 1);
+      }
+    }
+    console.log(this.data.length);
 
     const rsiValues = this.rsi(this.data, 14);
-    const emaTrend = indicatorExponentialMovingAverage().period(150).value((d) => d.close);
+    const emaTrend = indicatorExponentialMovingAverage().period(20).value((d) => d.ratio1);
     const emaTrendData = emaTrend(this.data);
+
 
 
     for (let i = 10; i < this.data.length; i++) {
@@ -95,10 +103,10 @@ export class AppComponent implements OnInit {
         console.log('bug')
       }
 
-      const lookback = 2;
+      const lookback = 1;
       if (this.bullStrategy(this.haData, this.data, i, lookback, rsiValues)) {
         this.inLong = true;
-      } else if (this.bearStrategy(this.haData, this.data, i, lookback, rsiValues,)) {
+      } else if (this.bearStrategy(this.haData, this.data, i, lookback, rsiValues)) {
         this.inShort = true;
       }
     }
@@ -137,13 +145,13 @@ export class AppComponent implements OnInit {
 
   stopConditions(i: number): boolean {
     return (
-      this.looseIncLong == 2 ||
-      this.looseIncShort == 2 ||
+      this.looseIncLong == 0 ||
+      this.looseIncShort == 0 ||
       Math.abs(this.high(this.data, i, 0) - this.low(this.data, i, 0)) > 50
     ) ? true : false;
   }
 
-  bullStrategy(haData: any, data: any, i: number, lookback: number, rsiValues: any): any {
+  bullStrategy(haData: any, data: any, i: number, lookback: number, rsi: any): any {
     let cond = true;
     for (let j = (i - 1); j >= (i - lookback); j--) {
       if (haData[j].bull) {
@@ -152,11 +160,16 @@ export class AppComponent implements OnInit {
       }
     }
 
+    let obCond = false;
+    if (Math.abs(data[i - 10].ratio1 - data[i].ratio1) > 10 && data[i].ratio1 > 0) {
+      obCond = true;
+    }
 
-    if (cond
-      && haData[i].bull
-      //&& rsiValues[i] < 40
-      //&& ObCond
+
+    if (
+      cond
+      && rsi[i] < 45
+      && data[i].ratio2p5 > 30
     ) {
       //console.log('Entry bull setup', this.utils.getDate(data[i].time));
       return true;
@@ -166,7 +179,7 @@ export class AppComponent implements OnInit {
   }
 
 
-  bearStrategy(haData: any, data: any, i: number, lookback: number, rsiValues: any): any {
+  bearStrategy(haData: any, data: any, i: number, lookback: number, rsi: any): any {
     let cond = true;
     for (let j = (i - 1); j >= (i - lookback); j--) {
       if (haData[j].bear) {
@@ -175,10 +188,14 @@ export class AppComponent implements OnInit {
       }
     }
 
+    let obCond = false;
+    if (Math.abs(data[i - 10].ratio1 - data[i].ratio1) < 10 && data[i].ratio1 < 0) {
+      obCond = true;
+    }
+
     if (cond
-      && haData[i].bear
-      //&& rsiValues[i] > 60
-      //&& ObCond
+      && rsi[i] > 55
+      && data[i].ratio2p5 < -30
     ) {
       //console.log('Entry bear setup', this.utils.getDate(data[i].time));
       return true;
