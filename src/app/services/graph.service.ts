@@ -9,24 +9,28 @@ export class GraphService {
     {
       name: 'Date',
       type: 'date',
-      format: '%Y-%m-%d %H:%M'
+      format: '%Y-%m-%d %H:%M',
     },
     {
       name: 'Open',
-      type: 'number'
+      type: 'number',
     },
     {
       name: 'High',
-      type: 'number'
+      type: 'number',
     },
     {
       name: 'Low',
-      type: 'number'
+      type: 'number',
     },
     {
       name: 'Close',
-      type: 'number'
-    }
+      type: 'number',
+    },
+    {
+      name: 'Ratio2p5',
+      type: 'number',
+    },
   ];
 
   dataSource = {
@@ -34,7 +38,7 @@ export class GraphService {
       enabled: false,
     },
     chart: {
-      theme: 'candy'
+      theme: 'candy',
     },
     data: null,
     xAxis: {
@@ -43,21 +47,28 @@ export class GraphService {
     },
     yaxis: [
       {
-        plot: {
-          value: {
-            open: 'Open',
-            high: 'High',
-            low: 'Low',
-            close: 'Close',
+        plot: [
+          {
+            value: {
+              open: 'Open',
+              high: 'High',
+              low: 'Low',
+              close: 'Close',
+            },
+            type: 'candlestick',
           },
-          type: 'candlestick'
-        },
-        format: {
-          prefix: '$'
-        },
-        title: 'Stock Value'
-      }
-    ]
+        ],
+      },
+      {
+        plot: [
+          {
+            value: 'Ratio2p5',
+            type: 'line',
+            connectnulldata: true
+          },
+        ],
+      },
+    ],
   };
 
 

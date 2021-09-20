@@ -1,12 +1,36 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
+import { AngularFireDatabase } from '@angular/fire/database';
+import { Subscription } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
 })
 export class UtilsService {
 
-  constructor(private http: HttpClient) {
+  subscription: Subscription;
+
+  constructor(private http: HttpClient, private db: AngularFireDatabase) { }
+
+  /**
+   * Get data from Firebase
+   */
+  getDataFromFirebase(path: string): Promise<any> {
+    return new Promise<any>((resolve, reject) => {
+      this.subscription = this.db
+        .list(path)
+        .valueChanges()
+        .subscribe(
+          (snapshot: any) => {
+            this.subscription.unsubscribe();
+            resolve(snapshot);
+          },
+          (error) => {
+            console.log(error);
+            reject(error);
+          }
+        );
+    });
   }
 
   /**
