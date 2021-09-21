@@ -28,10 +28,10 @@ export class AppComponent implements OnInit {
   emaFastData: any;
   emaSlowData: any;
   lookback = 1;
-  rsiBull = 30;
-  rsiBear = 70;
-  ratioBull = 25;
-  ratioBear = -25;
+  rsiBull = 40;
+  rsiBear = 60;
+  ratioBull = 20;
+  ratioBear = -20;
   tfInterval = 5;
   iSnap: number;
 
@@ -46,13 +46,21 @@ export class AppComponent implements OnInit {
     const rsiValues = this.rsi(this.data, 14);
 
     console.log(this.data.length, this.data[0]);
-    for (let i = this.data.length - 1; i >= 0; i--) {
-      if (this.data[i]?.ratio1 == this.data[i - 1]?.ratio1 && this.data[i]?.ratio2p5 == this.data[i - 1]?.ratio2p5 && this.data[i]?.ratio5 == this.data[i - 1]?.ratio5) {
+    for (let i = this.data.length - 1; i >= 1; i--) {
+      if (this.data[i].open == this.data[i - 1].open && this.data[i].close == this.data[i - 1].close && this.data[i].high == this.data[i - 1].high && this.data[i].low == this.data[i - 1].low) {
         this.data.splice(i, 1);
+        //console.log(this.utils.getDateFormat(this.data[i].time), this.data[i].open, this.data[i].close)
       }
     }
     console.log(this.data.length);
 
+    for (let i = this.data.length - 1; i >= 1; i--) {
+      if (this.data[i].ratio1 == this.data[i - 1].ratio1 && this.data[i].ratio2p5 == this.data[i - 1].ratio2p5 && this.data[i].ratio5 == this.data[i - 1].ratio5) {
+        this.data.splice(i, 1);
+        console.log(this.utils.getDateFormat(this.data[i].time), this.data[i].ratio2p5)
+      }
+    }
+    console.log(this.data.length);
 
     for (let i = 10; i < this.data.length; i++) {
       if (this.inLong) {
