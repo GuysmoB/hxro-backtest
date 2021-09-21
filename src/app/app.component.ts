@@ -27,10 +27,11 @@ export class AppComponent implements OnInit {
   displayChart = true;
   emaFastData: any;
   emaSlowData: any;
-  rsiBull = 40;
-  rsiBear = 60;
-  ratioBull = 20;
-  ratioBear = -20;
+  lookback = 1;
+  rsiBull = 30;
+  rsiBear = 70;
+  ratioBull = 25;
+  ratioBear = -25;
   tfInterval = 5;
   iSnap: number;
 
@@ -42,18 +43,15 @@ export class AppComponent implements OnInit {
     this.data = await this.utils.getDataFromFirebase('orderbook-data');
     console.log(this.data[0])
     this.haData = this.utils.setHeikenAshiData(this.data);
+    const rsiValues = this.rsi(this.data, 14);
 
-    let rsiValues = this.rsi(this.data, 14);
-    const emaTrend = indicatorExponentialMovingAverage().period(150).value((d) => d.close);
-    const emaTrendData = emaTrend(this.data);
-
-    /* console.log(this.data.length, this.data[0]);
+    console.log(this.data.length, this.data[0]);
     for (let i = this.data.length - 1; i >= 0; i--) {
       if (this.data[i]?.ratio1 == this.data[i - 1]?.ratio1 && this.data[i]?.ratio2p5 == this.data[i - 1]?.ratio2p5 && this.data[i]?.ratio5 == this.data[i - 1]?.ratio5) {
         this.data.splice(i, 1);
       }
     }
-    console.log(this.data.length); */
+    console.log(this.data.length);
 
 
     for (let i = 10; i < this.data.length; i++) {
@@ -62,12 +60,12 @@ export class AppComponent implements OnInit {
           if (this.isUpInterval(this.data, i, this.tfInterval)) {
             this.allTrades.push(this.utils.addFees(0.91));
             this.winTrades.push(this.utils.addFees(0.91));
-            //console.log('Resultat ++', this.round(this.utils.arraySum(this.allTrades), 2), this.utils.getDate(this.data[i].time));
+            console.log('Resultat ++', this.round(this.utils.arraySum(this.allTrades), 2), this.utils.getDate(this.data[i].time));
             this.looseIncLong = 0;
           } else {
             this.allTrades.push(-1);
             this.loseTrades.push(-1);
-            //console.log('Resultat --', this.round(this.utils.arraySum(this.allTrades), 2), this.utils.getDate(this.data[i].time));
+            console.log('Resultat --', this.round(this.utils.arraySum(this.allTrades), 2), this.utils.getDate(this.data[i].time));
             this.looseIncLong++;
           }
 
@@ -84,12 +82,12 @@ export class AppComponent implements OnInit {
           if (!this.isUpInterval(this.data, i, this.tfInterval)) {
             this.allTrades.push(this.utils.addFees(0.91));
             this.winTrades.push(this.utils.addFees(0.91));
-            //console.log('Resultat ++', this.round(this.utils.arraySum(this.allTrades), 2), this.utils.getDate(this.data[i].time));
+            console.log('Resultat ++', this.round(this.utils.arraySum(this.allTrades), 2), this.utils.getDate(this.data[i].time));
             this.looseIncShort = 0;
           } else {
             this.allTrades.push(-1);
             this.loseTrades.push(-1);
-            //console.log('Resultat --', this.round(this.utils.arraySum(this.allTrades), 2), this.utils.getDate(this.data[i].time));
+            console.log('Resultat --', this.round(this.utils.arraySum(this.allTrades), 2), this.utils.getDate(this.data[i].time));
             this.looseIncShort++;
           }
 
@@ -111,13 +109,11 @@ export class AppComponent implements OnInit {
       }
 
       if (!this.inLong && !this.inShort) {
-        let date = '0' + new Date(this.data[i].time).getMinutes();
-        if (date.substr(-1) == '4' || date.substr(-1) == '9') {  //if (date.substr(-2) == '14' || date.substr(-2) == '29' || date.substr(-2) == '44' || date.substr(-2) == '59') {
-          const lookback = 1;
-          if (this.bullStrategy(this.haData, this.data, i, lookback, rsiValues)) {
+        if (this.isTimeMatchingTf(i)) {
+          if (this.bullStrategy(this.haData, this.data, i, rsiValues)) {
             this.inLong = true;
             this.iSnap = i;
-          } else if (this.bearStrategy(this.haData, this.data, i, lookback, rsiValues)) {
+          } else if (this.bearStrategy(this.haData, this.data, i, rsiValues)) {
             this.inShort = true;
             this.iSnap = i;
           }
@@ -135,18 +131,22 @@ export class AppComponent implements OnInit {
 
 
 
-
-  bullStrategy(haData: any, data: any, i: number, lookback: number, rsiValues: any): any {
+  bullStrategy(haData: any, data: any, i: number, rsiValues: any): any {
     let cond = true;
-    for (let j = (i - 1); j >= (i - lookback); j--) {
+    for (let j = (i - 1); j >= (i - this.lookback); j--) {
       if (haData[j].bull) {
         cond = false;
         break;
       }
     }
 
-    if (rsiValues[i] < this.rsiBull && data[i].ratio2p5 > this.ratioBull) {
-      //console.log('Entry bull setup', this.utils.getDate(data[i].time));
+    if (
+      //cond &&
+      rsiValues[i] < this.rsiBull &&
+      data[i].ratio2p5 > this.ratioBull /* &&
+      data[i].ratio1 > 20 */
+    ) {
+      console.log('Entry bull setup', this.utils.getDate(data[i].time));
       return true;
     } else {
       return false;
@@ -154,22 +154,38 @@ export class AppComponent implements OnInit {
   }
 
 
-  bearStrategy(haData: any, data: any, i: number, lookback: number, rsiValues: any): any {
+  bearStrategy(haData: any, data: any, i: number, rsiValues: any): any {
     let cond = true;
-    for (let j = (i - 1); j >= (i - lookback); j--) {
+    for (let j = (i - 1); j >= (i - this.lookback); j--) {
       if (haData[j].bear) {
         cond = false;
         break;
       }
     }
 
-    if (rsiValues[i] > this.rsiBear && data[i].ratio2p5 < this.ratioBear) {
-      //console.log('Entry bear setup', this.utils.getDate(data[i].time));
+    if (
+      //cond &&
+      rsiValues[i] > this.rsiBear &&
+      data[i].ratio2p5 < this.ratioBear /* &&
+      data[i].ratio1 < -20 */
+    ) {
+      console.log('Entry bear setup', this.utils.getDate(data[i].time));
       return true;
     } else {
       return false;
     }
   }
+
+
+  isTimeMatchingTf(i: any) {
+    let minute = new Date(this.data[i].time).getMinutes();
+    return (
+      (this.tfInterval == 5 && (minute.toString().substr(-1) == '4' || minute.toString().substr(-1) == '9')) ||
+      (this.tfInterval == 15 && (minute == 14 || minute == 29 || minute == 44 || minute == 59)) ||
+      (this.tfInterval == 1)
+    ) ? true : false;
+  }
+
 
 
   stopConditions(i: number): boolean {
