@@ -30,9 +30,9 @@ export class AppComponent implements OnInit {
   lookback = 1;
   rsiBull = 40;
   rsiBear = 60;
-  ratioBull = 20;
-  ratioBear = -20;
-  tfInterval = 5;
+  ratioBull = 0;
+  ratioBear = -0;
+  tfInterval = 1;
   iSnap: number;
 
   constructor(private graphService: GraphService, private utils: UtilsService) { }
@@ -45,22 +45,22 @@ export class AppComponent implements OnInit {
     this.haData = this.utils.setHeikenAshiData(this.data);
     const rsiValues = this.rsi(this.data, 14);
 
-    console.log(this.data.length, this.data[0]);
-    for (let i = this.data.length - 1; i >= 1; i--) {
-      if (this.data[i].open == this.data[i - 1].open && this.data[i].close == this.data[i - 1].close && this.data[i].high == this.data[i - 1].high && this.data[i].low == this.data[i - 1].low) {
-        this.data.splice(i, 1);
-        //console.log(this.utils.getDateFormat(this.data[i].time), this.data[i].open, this.data[i].close)
-      }
-    }
-    console.log(this.data.length);
+    /*  console.log(this.data.length, this.data[0]);
+     for (let i = this.data.length - 1; i >= 1; i--) {
+       if (this.data[i].time == this.data[i - 1].time) {
+         this.data.splice(i, 1);
+         console.log(this.utils.getDateFormat(this.data[i].time), this.data[i].open, this.data[i].close)
+       }
+     }
+     console.log(this.data.length);
 
-    for (let i = this.data.length - 1; i >= 1; i--) {
-      if (this.data[i].ratio1 == this.data[i - 1].ratio1 && this.data[i].ratio2p5 == this.data[i - 1].ratio2p5 && this.data[i].ratio5 == this.data[i - 1].ratio5) {
-        this.data.splice(i, 1);
-        console.log(this.utils.getDateFormat(this.data[i].time), this.data[i].ratio2p5)
-      }
-    }
-    console.log(this.data.length);
+     for (let i = this.data.length - 1; i >= 1; i--) {
+       if (this.data[i].ratio1 == this.data[i - 1].ratio1 && this.data[i].ratio2p5 == this.data[i - 1].ratio2p5 && this.data[i].ratio5 == this.data[i - 1].ratio5) {
+         this.data.splice(i, 1);
+         console.log(this.utils.getDateFormat(this.data[i].time), this.data[i].ratio2p5)
+       }
+     }
+     console.log(this.data.length); */
 
     for (let i = 10; i < this.data.length; i++) {
       if (this.inLong) {
@@ -149,10 +149,12 @@ export class AppComponent implements OnInit {
     }
 
     if (
+      data[i].ratiop025 &&
+      haData[i].bull &&
       //cond &&
       rsiValues[i] < this.rsiBull &&
-      data[i].ratio2p5 > this.ratioBull /* &&
-      data[i].ratio1 > 20 */
+      data[i].ratio1 > this.ratioBull /* &&
+      data[i].ratiop025 > this.ratioBear */
     ) {
       console.log('Entry bull setup', this.utils.getDate(data[i].time));
       return true;
@@ -172,10 +174,12 @@ export class AppComponent implements OnInit {
     }
 
     if (
+      data[i].ratiop025 &&
+      haData[i].bear &&
       //cond &&
       rsiValues[i] > this.rsiBear &&
-      data[i].ratio2p5 < this.ratioBear /* &&
-      data[i].ratio1 < -20 */
+      data[i].ratio1 < this.ratioBear /* &&
+      data[i].ratiop025 < this.ratioBear */
     ) {
       console.log('Entry bear setup', this.utils.getDate(data[i].time));
       return true;
@@ -209,7 +213,7 @@ export class AppComponent implements OnInit {
   */
   initGraphProperties(data: any, dataRisk: any): void {
     const finalData = data.map((res) => {
-      return [this.utils.getDateFormat(res.time), res.open, res.high, res.low, res.close, res.ratio2p5];
+      return [this.utils.getDateFormat(res.time), res.open, res.high, res.low, res.close, res.ratiop025];
     });
 
     const fusionTable = new FusionCharts.DataStore().createDataTable(finalData, this.graphService.schema);
