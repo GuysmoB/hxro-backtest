@@ -30,9 +30,9 @@ export class AppComponent implements OnInit {
   lookback = 1;
   rsiBull = 40;
   rsiBear = 60;
-  ratioBull = 0;
-  ratioBear = -0;
-  tfInterval = 1;
+  ratioBull = 20;
+  ratioBear = -20;
+  tfInterval = 5;
   iSnap: number;
 
   constructor(private graphService: GraphService, private utils: UtilsService) { }
@@ -150,7 +150,7 @@ export class AppComponent implements OnInit {
 
     if (
       data[i].ratiop025 &&
-      haData[i].bull &&
+      //haData[i].bull &&
       //cond &&
       rsiValues[i] < this.rsiBull &&
       data[i].ratio1 > this.ratioBull /* &&
@@ -175,7 +175,7 @@ export class AppComponent implements OnInit {
 
     if (
       data[i].ratiop025 &&
-      haData[i].bear &&
+      //haData[i].bear &&
       //cond &&
       rsiValues[i] > this.rsiBear &&
       data[i].ratio1 < this.ratioBear /* &&
