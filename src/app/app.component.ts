@@ -27,14 +27,17 @@ export class AppComponent implements OnInit {
   displayChart = true;
   emaFastData: any;
   emaSlowData: any;
+  rsiValues: any;
   lookback = 1;
   rsiBull = 40;
   rsiBear = 60;
-  ratioBull = 20;
-  ratioBear = -20;
-  tfInterval = 5;
+  ratioBull = 0;
+  ratioBear = -0;
+  tfInterval = 1;
   iSnap: number;
-
+  showLog = false;
+  config: any = [];
+  loopFinished = false;
   constructor(private graphService: GraphService, private utils: UtilsService) { }
 
   async ngOnInit() {
@@ -43,37 +46,62 @@ export class AppComponent implements OnInit {
     this.data = await this.utils.getDataFromFirebase('orderbook-data');
     console.log(this.data[0])
     this.haData = this.utils.setHeikenAshiData(this.data);
-    const rsiValues = this.rsi(this.data, 14);
+    this.rsiValues = this.rsi(this.data, 14);
 
-    /*  console.log(this.data.length, this.data[0]);
-     for (let i = this.data.length - 1; i >= 1; i--) {
-       if (this.data[i].time == this.data[i - 1].time) {
-         this.data.splice(i, 1);
-         console.log(this.utils.getDateFormat(this.data[i].time), this.data[i].open, this.data[i].close)
-       }
-     }
-     console.log(this.data.length);
+    this.rsiBull = 30;
+    this.rsiBear = 70;
+    for (let i = 0; i < 5; i++) {
+      this.ratioBull = 0;
+      this.ratioBear = -0;
 
-     for (let i = this.data.length - 1; i >= 1; i--) {
-       if (this.data[i].ratio1 == this.data[i - 1].ratio1 && this.data[i].ratio2p5 == this.data[i - 1].ratio2p5 && this.data[i].ratio5 == this.data[i - 1].ratio5) {
-         this.data.splice(i, 1);
-         console.log(this.utils.getDateFormat(this.data[i].time), this.data[i].ratio2p5)
-       }
-     }
-     console.log(this.data.length); */
+      for (let j = 0; j < 5; j++) {
+        this.mainLoop();
 
+        if (this.utils.round((this.winTrades.length / (this.loseTrades.length + this.winTrades.length)) * 100, 2) > 60) {
+          this.config.push({ rsiBull: this.rsiBull, rsiBear: this.rsiBear, ratioBull: this.ratioBull, ratioBear: this.ratioBear });
+        }
+        console.log('-------------');
+        console.log('RSI bull :', this.rsiBull, '| RSI bear :', this.rsiBear);
+        console.log('Ratio bull :', this.ratioBull, '| Ratio bear :', this.ratioBear);
+        console.log('Trades : Gagnes / Perdus / Total', this.winTrades.length, this.loseTrades.length, this.winTrades.length + this.loseTrades.length);
+        console.log('Total R:R', this.utils.round(this.loseTrades.reduce((a, b) => a + b, 0) + this.winTrades.reduce((a, b) => a + b, 0), 2));
+        console.log('Avg R:R', this.utils.round(this.allTrades.reduce((a, b) => a + b, 0) / this.allTrades.length, 2));
+        console.log('Winrate ' + this.utils.round((this.winTrades.length / (this.loseTrades.length + this.winTrades.length)) * 100, 2) + '%');
+        this.allTrades = [];
+        this.winTrades = [];
+        this.loseTrades = [];
+        this.ratioBull = this.ratioBull + 5;
+        this.ratioBear = this.ratioBear - 5;
+      }
+
+      this.rsiBull = this.rsiBull + 5;
+      this.rsiBear = this.rsiBear - 5;
+    }
+    this.loopFinished = true;
+    console.log(this.config)
+    this.mainLoop()
+    console.log('Trades : Gagnes / Perdus / Total', this.winTrades.length, this.loseTrades.length, this.winTrades.length + this.loseTrades.length);
+    console.log('Total R:R', this.utils.round(this.loseTrades.reduce((a, b) => a + b, 0) + this.winTrades.reduce((a, b) => a + b, 0), 2));
+    console.log('Avg R:R', this.utils.round(this.allTrades.reduce((a, b) => a + b, 0) / this.allTrades.length, 2));
+    console.log('Winrate ' + this.utils.round((this.winTrades.length / (this.loseTrades.length + this.winTrades.length)) * 100, 2) + '%');
+    this.initGraphProperties(this.data, this.allTrades);
+
+  }
+
+
+  mainLoop() {
     for (let i = 10; i < this.data.length; i++) {
       if (this.inLong) {
         if (i == this.iSnap + this.tfInterval) {
           if (this.isUpInterval(this.data, i, this.tfInterval)) {
             this.allTrades.push(this.utils.addFees(0.91));
             this.winTrades.push(this.utils.addFees(0.91));
-            console.log('Resultat ++', this.round(this.utils.arraySum(this.allTrades), 2), this.utils.getDate(this.data[i].time));
+            this.showLog ? console.log('Resultat ++', this.round(this.utils.arraySum(this.allTrades), 2), this.utils.getDate(this.data[i].time)) : '';
             this.looseIncLong = 0;
           } else {
             this.allTrades.push(-1);
             this.loseTrades.push(-1);
-            console.log('Resultat --', this.round(this.utils.arraySum(this.allTrades), 2), this.utils.getDate(this.data[i].time));
+            this.showLog ? console.log('Resultat --', this.round(this.utils.arraySum(this.allTrades), 2), this.utils.getDate(this.data[i].time)) : '';
             this.looseIncLong++;
           }
 
@@ -90,12 +118,12 @@ export class AppComponent implements OnInit {
           if (!this.isUpInterval(this.data, i, this.tfInterval)) {
             this.allTrades.push(this.utils.addFees(0.91));
             this.winTrades.push(this.utils.addFees(0.91));
-            console.log('Resultat ++', this.round(this.utils.arraySum(this.allTrades), 2), this.utils.getDate(this.data[i].time));
+            this.showLog ? console.log('Resultat ++', this.round(this.utils.arraySum(this.allTrades), 2), this.utils.getDate(this.data[i].time)) : '';
             this.looseIncShort = 0;
           } else {
             this.allTrades.push(-1);
             this.loseTrades.push(-1);
-            console.log('Resultat --', this.round(this.utils.arraySum(this.allTrades), 2), this.utils.getDate(this.data[i].time));
+            this.showLog ? console.log('Resultat --', this.round(this.utils.arraySum(this.allTrades), 2), this.utils.getDate(this.data[i].time)) : '';
             this.looseIncShort++;
           }
 
@@ -118,45 +146,49 @@ export class AppComponent implements OnInit {
 
       if (!this.inLong && !this.inShort) {
         if (this.isTimeMatchingTf(i)) {
-          if (this.bullStrategy(this.haData, this.data, i, rsiValues)) {
-            this.inLong = true;
-            this.iSnap = i;
-          } else if (this.bearStrategy(this.haData, this.data, i, rsiValues)) {
-            this.inShort = true;
-            this.iSnap = i;
+          if (this.loopFinished) {
+            for (let j = 0; j < this.config.length; j++) {
+              this.rsiBull = this.config[j].rsiBull;
+              this.rsiBear = this.config[j].rsiBear;
+              this.ratioBull = this.config[j].ratioBull;
+              this.ratioBear = this.config[j].ratioBear;
+              if (this.bullStrategy(this.haData, this.data, i, this.rsiValues)) {
+                this.inLong = true;
+                this.iSnap = i;
+                break;
+              } else if (this.bearStrategy(this.haData, this.data, i, this.rsiValues)) {
+                this.inShort = true;
+                this.iSnap = i;
+                break;
+              }
+            }
+          } else {
+            if (this.bullStrategy(this.haData, this.data, i, this.rsiValues)) {
+              this.inLong = true;
+              this.iSnap = i;
+            } else if (this.bearStrategy(this.haData, this.data, i, this.rsiValues)) {
+              this.inShort = true;
+              this.iSnap = i;
+            }
           }
+
         }
       }
     }
-
-    console.log('-------------');
-    console.log('Trades : Gagnes / Perdus / Total', this.winTrades.length, this.loseTrades.length, this.winTrades.length + this.loseTrades.length);
-    console.log('Total R:R', this.utils.round(this.loseTrades.reduce((a, b) => a + b, 0) + this.winTrades.reduce((a, b) => a + b, 0), 2));
-    console.log('Avg R:R', this.utils.round(this.allTrades.reduce((a, b) => a + b, 0) / this.allTrades.length, 2));
-    console.log('Winrate ' + this.utils.round((this.winTrades.length / (this.loseTrades.length + this.winTrades.length)) * 100, 2) + '%');
-    this.initGraphProperties(this.data, this.allTrades);
   }
 
 
 
   bullStrategy(haData: any, data: any, i: number, rsiValues: any): any {
-    let cond = true;
-    for (let j = (i - 1); j >= (i - this.lookback); j--) {
-      if (haData[j].bull) {
-        cond = false;
-        break;
-      }
-    }
-
     if (
       data[i].ratiop025 &&
-      //haData[i].bull &&
-      //cond &&
+      haData[i].bull &&
       rsiValues[i] < this.rsiBull &&
-      data[i].ratio1 > this.ratioBull /* &&
-      data[i].ratiop025 > this.ratioBear */
+      data[i].ratiop025 > this.ratioBull
+      /* &&
+   data[i].ratiop025 > this.ratioBear */
     ) {
-      console.log('Entry bull setup', this.utils.getDate(data[i].time));
+      this.showLog ? console.log('Entry bull setup', this.utils.getDate(data[i].time)) : '';
       return true;
     } else {
       return false;
@@ -165,23 +197,14 @@ export class AppComponent implements OnInit {
 
 
   bearStrategy(haData: any, data: any, i: number, rsiValues: any): any {
-    let cond = true;
-    for (let j = (i - 1); j >= (i - this.lookback); j--) {
-      if (haData[j].bear) {
-        cond = false;
-        break;
-      }
-    }
-
     if (
       data[i].ratiop025 &&
-      //haData[i].bear &&
-      //cond &&
+      haData[i].bear &&
       rsiValues[i] > this.rsiBear &&
-      data[i].ratio1 < this.ratioBear /* &&
+      data[i].ratiop025 < this.ratioBear/* &&
       data[i].ratiop025 < this.ratioBear */
     ) {
-      console.log('Entry bear setup', this.utils.getDate(data[i].time));
+      this.showLog ? console.log('Entry bear setup', this.utils.getDate(data[i].time)) : '';
       return true;
     } else {
       return false;
