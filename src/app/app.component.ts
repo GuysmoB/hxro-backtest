@@ -33,6 +33,8 @@ export class AppComponent implements OnInit {
   rsiBear = 60;
   ratioBull = 0;
   ratioBear = -0;
+  smallRatioBull = 0;
+  smallRatioBear = -0;
   tfInterval = 1;
   iSnap: number;
   showLog = false;
@@ -58,11 +60,12 @@ export class AppComponent implements OnInit {
         this.mainLoop();
 
         if (this.utils.round((this.winTrades.length / (this.loseTrades.length + this.winTrades.length)) * 100, 2) > 60) {
-          this.config.push({ rsiBull: this.rsiBull, rsiBear: this.rsiBear, ratioBull: this.ratioBull, ratioBear: this.ratioBear });
+          this.config.push({ rsiBull: this.rsiBull, rsiBear: this.rsiBear, ratioBull: this.ratioBull, ratioBear: this.ratioBear, smallRatioBear: this.smallRatioBear, smallRatioBull: this.smallRatioBull });
         }
         console.log('-------------');
         console.log('RSI bull :', this.rsiBull, '| RSI bear :', this.rsiBear);
         console.log('Ratio bull :', this.ratioBull, '| Ratio bear :', this.ratioBear);
+        console.log('Small Ratio bull :', this.smallRatioBull, '| Small Ratio bear :', this.smallRatioBear);
         console.log('Trades : Gagnes / Perdus / Total', this.winTrades.length, this.loseTrades.length, this.winTrades.length + this.loseTrades.length);
         console.log('Total R:R', this.utils.round(this.loseTrades.reduce((a, b) => a + b, 0) + this.winTrades.reduce((a, b) => a + b, 0), 2));
         console.log('Avg R:R', this.utils.round(this.allTrades.reduce((a, b) => a + b, 0) / this.allTrades.length, 2));
@@ -76,6 +79,8 @@ export class AppComponent implements OnInit {
 
       this.rsiBull = this.rsiBull + 5;
       this.rsiBear = this.rsiBear - 5;
+      this.smallRatioBull = this.smallRatioBull + 5;
+      this.smallRatioBear = this.smallRatioBear - 5;
     }
     this.loopFinished = true;
     console.log(this.config)
@@ -152,6 +157,8 @@ export class AppComponent implements OnInit {
               this.rsiBear = this.config[j].rsiBear;
               this.ratioBull = this.config[j].ratioBull;
               this.ratioBear = this.config[j].ratioBear;
+              this.smallRatioBull = this.config[j].smallRatioBull;
+              this.smallRatioBear = this.config[j].smallRatioBear;
               if (this.bullStrategy(this.haData, this.data, i, this.rsiValues)) {
                 this.inLong = true;
                 this.iSnap = i;
@@ -183,10 +190,9 @@ export class AppComponent implements OnInit {
     if (
       data[i].ratiop025 &&
       haData[i].bull &&
-      rsiValues[i] < this.rsiBull &&
-      data[i].ratiop025 > this.ratioBull
-      /* &&
-   data[i].ratiop025 > this.ratioBear */
+      //rsiValues[i] < this.rsiBull &&
+      data[i].ratio1 > this.ratioBull /* &&
+      data[i].ratio1 > this.smallRatioBull */
     ) {
       this.showLog ? console.log('Entry bull setup', this.utils.getDate(data[i].time)) : '';
       return true;
@@ -200,9 +206,9 @@ export class AppComponent implements OnInit {
     if (
       data[i].ratiop025 &&
       haData[i].bear &&
-      rsiValues[i] > this.rsiBear &&
-      data[i].ratiop025 < this.ratioBear/* &&
-      data[i].ratiop025 < this.ratioBear */
+      //rsiValues[i] > this.rsiBear &&
+      data[i].ratio1 < this.ratioBear /* &&
+      data[i].ratio1 < this.smallRatioBear */
     ) {
       this.showLog ? console.log('Entry bear setup', this.utils.getDate(data[i].time)) : '';
       return true;
