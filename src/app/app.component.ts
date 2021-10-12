@@ -43,7 +43,7 @@ export class AppComponent implements OnInit {
   constructor(private graphService: GraphService, private utils: UtilsService) { }
 
   async ngOnInit() {
-    //this.data = await this.utils.getDataFromCsv('eth1_kraken.txt');
+    //this.data = await this.utils.getDataFromCsv('eth1_kraken.txt'); //
     //this.data = await this.utils.getBnbFromCsv();
     this.data = await this.utils.getDataFromFirebase('orderbook-data');
     console.log(this.data[0])
